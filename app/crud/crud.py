@@ -1,35 +1,34 @@
-from sqlalchemy.orm import Session
-from ..models import Student
+from sqlalchemy import select, update, delete
+
+from ..db.database import database
+from ..models.schemas import StudentDB
 
 
-def get_student(db: Session, student_id: int):
-    return db.query(Student).filter(Student.student_id == student_id).first()
+async def get_student(student_id: int):
+    query = select(StudentDB).where(StudentDB.student_id == student_id)
+    return await database.fetch_one(query)
 
 
-def get_students(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(Student).offset(skip).limit(limit).all()
+async def get_students(skip: int = 0, limit: int = 10):
+    query = select(StudentDB).offset(skip).limit(limit)
+    return await database.fetch_all(query)
 
 
-def create_student(db: Session, student: Student):
-    db.add(student)
-    db.commit()
-    db.refresh(student)
-    return student
+async def create_student(student: dict, photo_content: bytes):
+    query = StudentDB.__tablename__.insert().values(**student, photo=photo_content)
+    student_id = await database.execute(query)
+    return student_id
 
 
-def update_student(db: Session, student_id: int, updated_data: dict):
-    student = db.query(Student).filter(Student.student_id == student_id).first()
-    if student:
-        for key, value in updated_data.items():
-            setattr(student, key, value)
-        db.commit()
-        db.refresh(student)
-    return student
+async def update_student(student_id: int, student: dict, photo_content: bytes):
+    query = (
+        update(StudentDB)
+        .where(StudentDB.student_id == student_id)
+        .values(**student, photo=photo_content)
+    )
+    return await database.execute(query)
 
 
-def delete_student(db: Session, student_id: int):
-    student = db.query(Student).filter(Student.student_id == student_id).first()
-    if student:
-        db.delete(student)
-        db.commit()
-    return student
+async def delete_student(student_id: int):
+    query = delete(StudentDB).where(StudentDB.student_id == student_id)
+    return await database.execute(query)
