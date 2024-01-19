@@ -1,0 +1,53 @@
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from sqlalchemy.orm import Session
+
+from . import crud
+from . import schemas
+from .database import SessionLocal
+
+app = FastAPI()
+
+
+@app.middleware("http")
+async def db_session_middleware(request: Request, call_next):
+    response = Response("Internal server error", status_code=500)
+    try:
+        request.state.db = SessionLocal()
+        response = await call_next(request)
+    finally:
+        request.state.db.close()
+    return response
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@app.post("/students/", response_model=schemas.Student)
+def create_students(student: schemas.StudentCreate, db: Session = Depends(get_db)):
+    return crud.create_student(db, student)
+
+
+@app.get("/students/", response_model=list[schemas.Student])
+def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    students = crud.get_students(db, skip=skip, limit=limit)
+    return students
+
+
+@app.get("/students/{student_id}", response_model=schemas.Student)
+def read_student(student_id: int, db: Session = Depends(get_db)):
+    db_student = crud.get_student(db, student_id)
+    if db_student is None:
+        return HTTPException(status_code=404, detail="Student not found")
+    return db_student
+
+
+@app.delete("/students/{student_id}", response_model=str)
+def delete_student(student_id: int, db: Session = Depends(get_db)):
+    if crud.delete_student(db, student_id):
+        return "Deleted successfully"
+    raise HTTPException(status_code=404, detail="Student not found")
