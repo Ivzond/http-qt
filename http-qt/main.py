@@ -32,6 +32,13 @@ def create_students(student: schemas.StudentCreate, db: Session = Depends(get_db
     return crud.create_student(db, student)
 
 
+@app.post("/students/{student_id}/photo", response_model=str)
+def upload_photo(student_id: int, photo: bytes = Depends(Request.files.get("photo")), db: Session = Depends(get_db)):
+    if crud.upload_photo(db, student_id, photo.file.read()):
+        return "Photo uploaded successfully"
+    raise HTTPException(status_code=404, detail="Student not found")
+
+
 @app.get("/students/", response_model=list[schemas.Student])
 def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     students = crud.get_students(db, skip=skip, limit=limit)

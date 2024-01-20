@@ -18,6 +18,15 @@ def create_student(db: Session, student: schemas.StudentCreate):
     return db_student
 
 
+def upload_photo(db: Session, student_id: int, photo: bytes):
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if db_student:
+        db_student.photo = photo
+        db.commit()
+        return True
+    return False
+
+
 def delete_student(db: Session, student_id: int):
     student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if student:
