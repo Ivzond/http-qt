@@ -13,11 +13,12 @@ class StudentBase(BaseModel):
 
 
 class StudentCreate(StudentBase):
-    pass
+    photo: Optional[str]
 
 
 class Student(StudentBase):
     id: int
 
-    class Config:
-        orm_mode = True
+
+class Config:
+    orm_mode = True

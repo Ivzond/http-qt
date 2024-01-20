@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, File
 from sqlalchemy.orm import Session
 
 from . import crud
@@ -16,7 +16,7 @@ async def db_session_middleware(request: Request, call_next):
         response = await call_next(request)
     finally:
         request.state.db.close()
-    return response
+        return response
 
 
 def get_db():
@@ -28,25 +28,26 @@ def get_db():
 
 
 @app.post("/students/", response_model=schemas.Student)
-def create_students(student: schemas.StudentCreate, db: Session = Depends(get_db)):
-    return crud.create_student(db, student)
+async def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
+    db_student = crud.create_student(db, student)
+    return db_student
 
 
 @app.post("/students/{student_id}/photo", response_model=str)
-def upload_photo(student_id: int, photo: bytes = Depends(Request.files.get("photo")), db: Session = Depends(get_db)):
-    if crud.upload_photo(db, student_id, photo.file.read()):
+async def upload_photo(student_id: int, photo: bytes = File(...), db: Session = Depends(get_db)):
+    if crud.upload_photo(db, student_id, photo):
         return "Photo uploaded successfully"
     raise HTTPException(status_code=404, detail="Student not found")
 
 
 @app.get("/students/", response_model=list[schemas.Student])
-def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     students = crud.get_students(db, skip=skip, limit=limit)
     return students
 
 
 @app.get("/students/{student_id}", response_model=schemas.Student)
-def read_student(student_id: int, db: Session = Depends(get_db)):
+async def read_student(student_id: int, db: Session = Depends(get_db)):
     db_student = crud.get_student(db, student_id)
     if db_student is None:
         return HTTPException(status_code=404, detail="Student not found")

@@ -3,7 +3,7 @@ from .database import Base
 
 
 class Student(Base):
-    __tablename__ = "students"
+    tablename = "students"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, index=True)
