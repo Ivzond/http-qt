@@ -8,4 +8,5 @@ Technologies:
 * FastAPI
 * SQLAlchemy
 * PostgreSQL
+* C++
 * QNetworkAccessManager
