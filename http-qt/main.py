@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, File
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, File, UploadFile
 from sqlalchemy.orm import Session
 import logging
 
@@ -33,9 +33,13 @@ def get_db():
 
 
 @app.post("/students/", response_model=schemas.Student)
-async def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
+async def create_student(
+        student: schemas.StudentCreate,
+        photo: UploadFile = File(...),
+        db: Session = Depends(get_db)):
     try:
-        db_student = crud.create_student(db, student)
+        # Access photo file content using `photo.file.read()`
+        db_student = crud.create_student(db, student, photo.file.read())
         return db_student
     except Exception as exc:
         logger.exception("Error in create_student endpoint: %s", str(exc))
@@ -43,8 +47,8 @@ async def create_student(student: schemas.StudentCreate, db: Session = Depends(g
 
 
 @app.post("/students/{student_id}/photo", response_model=str)
-async def upload_photo(student_id: int, photo: bytes = File(...), db: Session = Depends(get_db)):
-    if crud.upload_photo(db, student_id, photo):
+async def upload_photo(student_id: int, photo: UploadFile = File(...), db: Session = Depends(get_db)):
+    if crud.upload_photo(db, student_id, photo.file.read()):
         return "Photo uploaded successfully"
     raise HTTPException(status_code=404, detail="Student not found")
 

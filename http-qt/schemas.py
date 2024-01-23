@@ -12,8 +12,15 @@ class StudentBase(BaseModel):
     student_group: str
 
 
-class StudentCreate(StudentBase):
-    photo: Optional[str]
+class StudentCreate(BaseModel):
+    name: str
+    date_of_birth: str
+    grade: int
+    student_group: str
+    photo: Optional[bytes]
+
+    class Config:
+        orm_mode = True
 
 
 class Student(StudentBase):

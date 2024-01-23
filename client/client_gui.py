@@ -1,62 +1,116 @@
-import sys
-
-from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QLineEdit, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel, QLineEdit, QTextEdit, \
+    QHBoxLayout
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from PyQt5.QtCore import QUrl, QByteArray
 
 
-class MyClientApp(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.init_ui()
 
-        # Create QNetworkAccessManager
-        self.network_manager = QNetworkAccessManager(self)
-
     def init_ui(self):
-        self.setWindowTitle("FastAPI Client")
-        self.setGeometry(100, 100, 600, 400)
+        self.setWindowTitle('FastAPI Client')
 
-        # Create a central widget
-        central_widget = QWidget(self)
+        # Create widgets
+        self.name_label = QLabel('Name:')
+        self.name_edit = QLineEdit()
+
+        self.date_of_birth_label = QLabel('Date of Birth (YYYY-MM-DD):')
+        self.date_of_birth_edit = QLineEdit()
+
+        self.grade_label = QLabel('Grade:')
+        self.grade_edit = QLineEdit()
+
+        self.group_label = QLabel('Student Group:')
+        self.group_edit = QLineEdit()
+
+        self.photo_label = QLabel('Photo path:')
+        self.photo_edit = QLineEdit()
+
+        self.send_button = QPushButton('Send Request')
+        self.response_text = QTextEdit()
+
+        # Layout
+        layout = QVBoxLayout()
+
+        form_layout = QVBoxLayout()
+        form_layout.addWidget(self.name_label)
+        form_layout.addWidget(self.name_edit)
+        form_layout.addWidget(self.date_of_birth_label)
+        form_layout.addWidget(self.date_of_birth_edit)
+        form_layout.addWidget(self.grade_label)
+        form_layout.addWidget(self.grade_edit)
+        form_layout.addWidget(self.group_label)
+        form_layout.addWidget(self.group_edit)
+        form_layout.addWidget(self.photo_label)
+        form_layout.addWidget(self.photo_edit)
+
+        layout.addLayout(form_layout)
+        layout.addWidget(self.send_button)
+        layout.addWidget(self.response_text)
+
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
-        # Create a layout for the central widget
-        layout = QVBoxLayout(central_widget)
-
-        # Create widgets (buttons, text boxes, etc.) as needed
-
-        # Example button
-        self.btn_send_request = QPushButton("Send Request", self)
-        self.btn_send_request.clicked.connect(self.send_request)
-        layout.addWidget(self.btn_send_request)
-
-        # Example label
-        self.lbl_response = QLabel("Response will be displayed here", self)
-        layout.addWidget(self.lbl_response)
+        # Connect button click event to send_request function
+        self.send_button.clicked.connect(self.send_request)
 
     def send_request(self):
-        # Example request to get all students
-        request = QNetworkRequest(QUrl("http://localhost:8000/students/"))
-        reply = self.network_manager.get(request)
+        # Get values from the UI
+        name = self.name_edit.text()
+        date_of_birth = self.date_of_birth_edit.text()
+        grade = int(self.grade_edit.text())
+        group = self.group_edit.text()
+        photo_path = self.photo_edit.text()
 
-        # Connect signals to handle the response
-        reply.finished.connect(self.handle_request_finished)
+        # Read the binary content of the image file
+        with open(photo_path, 'rb') as photo_file:
+            photo_content = photo_file.read()
 
-    def handle_request_finished(self):
+        # Make a POST request to the FastAPI server
+        self.post_request(name, date_of_birth, grade, group, photo_content)
+
+    def post_request(self, name, date_of_birth, grade, group, photo_content):
+        url = QUrl("http://localhost:8000/students/")
+
+        # Create QNetworkRequest
+        request = QNetworkRequest(url)
+        request.setHeader(QNetworkRequest.ContentTypeHeader, "application/json")
+
+        # Create QNetworkAccessManager
+        manager = QNetworkAccessManager()
+
+        # Convert payload to bytes
+        data = QByteArray()
+
+        # Append JSON payload
+        data.append(
+            f'{{"name":"{name}", "date_of_birth":"{date_of_birth}", "grade":{grade}, "student_group":"{group}", "photo": null}}')
+
+        # Append binary photo content
+        data.append(photo_content)
+
+        # Send POST request
+        reply = manager.post(request, data)
+
+        # Connect signals for handling the response
+        reply.finished.connect(self.handle_response)
+
+    def handle_response(self):
         reply = self.sender()
-        if reply.error() == QNetworkReply.NoError:
-            # Handle successful response
-            data = reply.readAll()
-            self.lbl_response.setText(f'Response: {data.decode()}')
+
+        if reply.error():
+            self.response_text.setText(f"Error: {reply.errorString()}")
         else:
-            # Handle error
-            self.lbl_response.setText(f'Error: {reply.errorString()}')
+            response_text = reply.readAll().data().decode('utf-8')
+            self.response_text.setText(response_text)
 
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    client_app = MyClientApp()
-    client_app.show()
-    sys.exit(app.exec_())
+if __name__ == '__main__':
+    app = QApplication([])
+    window = MainWindow()
+    window.show()
+    app.exec_()
