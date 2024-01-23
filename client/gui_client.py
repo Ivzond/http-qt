@@ -108,7 +108,30 @@ class FastAPIClient(QMainWindow):
 
             if response.status_code == 200:
                 student = response.json()
-                QMessageBox.information(self, "Student Info", f"Student ID: {student['id']}\nName: {student['name']}")
+
+                # Display basic student information
+                info_message = (f"Student ID: {student['id']}\n"
+                                f"Name: {student['name']}\n"
+                                f"Date of birth: {student['date_of_birth']}\n"
+                                f"Photo: {student['photo']}\n"
+                                f"Grade: {student['grade']}\n"
+                                f"Student's group: {student['student_group']}")
+
+                # Check if the student has a photo
+                if student['photo']:
+                    photo_label = QLabel(self)
+                    pixmap = QPixmap()
+                    pixmap.loadFromData(bytes.fromhex(student['photo']))
+                    photo_label.setPixmap(pixmap)
+                    photo_label.setAlignment(Qt.AlignCenter)
+                    photo_label.setScaledContents(True)
+
+                    # Add the photo label to the layout
+                    self.layout.addWidget(photo_label)
+
+                # Display information using QMessageBox
+                QMessageBox.information(self, "Student info", info_message)
+
             else:
                 QMessageBox.warning(self, "Error", f"Failed to read student. Error: {response.text}")
 
