@@ -1,5 +1,8 @@
+from io import BytesIO
+
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, File
 from sqlalchemy.orm import Session
+from starlette.responses import StreamingResponse
 
 from . import crud
 from . import schemas
@@ -51,7 +54,12 @@ async def read_student(student_id: int, db: Session = Depends(get_db)):
     db_student = crud.get_student(db, student_id)
     if db_student is None:
         return HTTPException(status_code=404, detail="Student not found")
-    return db_student
+
+    photo_data = db_student.photo
+
+    photo_bytes = BytesIO(photo_data)
+
+    return StreamingResponse(photo_bytes, media_type="image")
 
 
 @app.delete("/students/{student_id}", response_model=str)

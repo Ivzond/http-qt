@@ -2,7 +2,7 @@ import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QLabel, QWidget, QFileDialog, \
-    QMessageBox, QInputDialog
+    QMessageBox, QInputDialog, QDialog, QFormLayout
 from PyQt5.QtGui import QPixmap
 import requests
 
@@ -92,7 +92,8 @@ class FastAPIClient(QMainWindow):
                                          files={"photo": photo_bytes})
 
                 if response.status_code == 200:
-                    QMessageBox.information(self, "Success", "Photo uploaded successfully.")
+                    photo_id = response.json()
+                    QMessageBox.information(self, "Success", f"Photo uploaded successfully!")
                 else:
                     QMessageBox.warning(self, "Error", f"Failed to upload photo. Error: {response.text}")
 
@@ -107,31 +108,28 @@ class FastAPIClient(QMainWindow):
             response = requests.get(f'http://127.0.0.1:8000/students/{student_id}')
 
             if response.status_code == 200:
-                student = response.json()
+                content_type = response.headers.get("Content-Type", "")
 
-                # Display basic student information
-                info_message = (f"Student ID: {student['id']}\n"
-                                f"Name: {student['name']}\n"
-                                f"Date of birth: {student['date_of_birth']}\n"
-                                f"Photo: {student['photo']}\n"
-                                f"Grade: {student['grade']}\n"
-                                f"Student's group: {student['student_group']}")
+                if "application/json" in content_type:
+                    student = response.json()
 
-                # Check if the student has a photo
-                if student['photo']:
-                    photo_label = QLabel(self)
+                    # Display basic student information
+                    QMessageBox.information(self, "Student Info",
+                                            f"Student ID: {student['id']}\n"
+                                            f"Name: {student['name']}\n"
+                                            f"Date of birth: {student['date_of_birth']}\n"
+                                            f"Photo: {student['photo']}\n"
+                                            f"Grade: {student['grade']}\n"
+                                            f"Student's group: {student['student_group']}")
+
+                    photo_data = student.get('photo', b'')
                     pixmap = QPixmap()
-                    pixmap.loadFromData(bytes.fromhex(student['photo']))
-                    photo_label.setPixmap(pixmap)
-                    photo_label.setAlignment(Qt.AlignCenter)
-                    photo_label.setScaledContents(True)
-
-                    # Add the photo label to the layout
-                    self.layout.addWidget(photo_label)
-
-                # Display information using QMessageBox
-                QMessageBox.information(self, "Student info", info_message)
-
+                    pixmap.loadFromData(photo_data)
+                    self.display_label.setPixmap(pixmap)
+                else:
+                    pixmap = QPixmap()
+                    pixmap.loadFromData(response.content)
+                    self.display_label.setPixmap(pixmap)
             else:
                 QMessageBox.warning(self, "Error", f"Failed to read student. Error: {response.text}")
 
