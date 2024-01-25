@@ -1,3 +1,5 @@
+import base64
+
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from . import models, schemas
@@ -11,7 +13,9 @@ def get_students(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Student).offset(skip).limit(limit).all()
 
 
-def create_student(db: Session, student: schemas.StudentCreate, photo_content: bytes):
+def create_student(db: Session, student: schemas.StudentCreate, encoded_photo: str):
+    photo_content = base64.b64decode(encoded_photo)
+
     db_student = models.Student(**student.model_dump(), photo=photo_content)
     db.add(db_student)
     db.commit()
