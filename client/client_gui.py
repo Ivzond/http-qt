@@ -36,14 +36,14 @@ class StudentForm(QWidget):
         self.delete_button.clicked.connect(self.delete_student)
 
         layout = QVBoxLayout()
-        layout.addWidget(self.name_label)
-        layout.addWidget(self.name_input)
-        layout.addWidget(self.date_of_birth_label)
-        layout.addWidget(self.date_of_birth_input)
-        layout.addWidget(self.grade_label)
-        layout.addWidget(self.grade_input)
-        layout.addWidget(self.student_group_label)
-        layout.addWidget(self.student_group_input)
+        # layout.addWidget(self.name_label)
+        # layout.addWidget(self.name_input)
+        # layout.addWidget(self.date_of_birth_label)
+        # layout.addWidget(self.date_of_birth_input)
+        # layout.addWidget(self.grade_label)
+        # layout.addWidget(self.grade_input)
+        # layout.addWidget(self.student_group_label)
+        # layout.addWidget(self.student_group_input)
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.create_button)
@@ -53,6 +53,27 @@ class StudentForm(QWidget):
 
         layout.addLayout(button_layout)
         self.setLayout(layout)
+
+    def create_student(self):
+        name = self.name_input.text()
+        date_of_birth = self.date_of_birth_input.text()
+        grade = int(self.grade_input.text())
+        student_group = self.student_group_input.text()
+
+        data = {
+            "name": name,
+            "date_of_birth": date_of_birth,
+            "grade": grade,
+            "student_group": student_group,
+        }
+
+        response = post(f"{SERVER_URL}/students/", json=data)
+
+        if response.status_code == 200:
+            QMessageBox.information(self, "Success", "Student created successfully!")
+            self.clear_fields()
+        else:
+            QMessageBox.critical(self, "Error", f"Error creating student: {response.text}")
 
     def read_students(self):
         response = get(f"{SERVER_URL}/students/")
@@ -66,6 +87,14 @@ class StudentForm(QWidget):
         else:
             QMessageBox.critical(self, "Error", f"Error reading students: {response.text}")
 
+    def update_student(self):
+        pass
+        # Implement update functionality here
+
+    def delete_student(self):
+        pass
+        # Implement delete functionality here
+
     def clear_fields(self):
         self.name_input.setText("")
         self.date_of_birth_input.setText("")
@@ -77,22 +106,16 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Student database")
+
         self.form = StudentForm()
-
         layout = QVBoxLayout()
+        layout.addWidget(self.form)
+        self.setLayout(layout)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
 
