@@ -1,13 +1,10 @@
-from sqlalchemy import Column, Integer, String, LargeBinary, Date
-from .database import Base
+from pydantic import BaseModel
+from datetime import date
 
 
-class Student(Base):
-    __tablename__ = "students"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, index=True)
-    date_of_birth = Column(Date)
-    photo = Column(LargeBinary)
-    grade = Column(Integer)
-    student_group = Column(String)
+class StudentCreate(BaseModel):
+    name: str
+    date_of_birth: date
+    photo: bytes
+    grade: int
+    student_group: str
