@@ -1,170 +1,98 @@
-import base64
-
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel, QLineEdit, \
-    QTextEdit, QFileDialog, QDialog, QFormLayout
-from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
-from PyQt5.QtCore import QUrl, QByteArray, Qt
 import sys
-import json
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from requests import post, get, delete
+
+SERVER_URL = "http://127.0.0.1:8000"
 
 
-class FastAPIClient:
-    def __init__(self, base_url="http://localhost:8000"):
-        self.base_url = base_url
-        self.manager = QNetworkAccessManager()
+class StudentForm(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setup_ui()
 
-    def make_request(self, method, endpoint, data=None):
-        url = QUrl(self.base_url + endpoint)
-        request = QNetworkRequest(url)
+    def setup_ui(self):
+        self.name_label = QLabel("Name:")
+        self.name_input = QLineEdit()
 
-        if data:
-            request.setHeader(QNetworkRequest.ContentTypeHeader, "application/json")
-            data = json.dumps(data).encode('utf-8')
+        self.date_of_birth_label = QLabel("Date of Birth (YYYY-MM-DD):")
+        self.date_of_birth_input = QLineEdit()
 
-        reply = self.manager.post(request, data)
-        return reply
+        self.grade_label = QLabel("Grade:")
+        self.grade_input = QLineEdit()
 
+        self.student_group_label = QLabel("Student group:")
+        self.student_group_input = QLineEdit()
 
-class CreateStudentForm(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle('Create Student Form')
-
-        self.name_label = QLabel('Name:')
-        self.name_edit = QLineEdit()
-
-        self.date_of_birth_label = QLabel('Date of Birth (YYYY-MM-DD):')
-        self.date_of_birth_edit = QLineEdit()
-
-        self.grade_label = QLabel('Grade:')
-        self.grade_edit = QLineEdit()
-
-        self.group_label = QLabel('Student Group:')
-        self.group_edit = QLineEdit()
-
-        self.photo_label = QLabel('Photo path:')
-        self.photo_edit = QLineEdit()
-
-        self.browse_button = QPushButton('Browse')
-        self.create_button = QPushButton('Create Student')
-
-        layout = QFormLayout()
-        layout.addRow(self.name_label, self.name_edit)
-        layout.addRow(self.date_of_birth_label, self.date_of_birth_edit)
-        layout.addRow(self.grade_label, self.grade_edit)
-        layout.addRow(self.group_label, self.group_edit)
-        layout.addRow(self.photo_label, self.photo_edit)
-        layout.addRow(self.browse_button, self.create_button)
-
-        self.setLayout(layout)
-
-        self.browse_button.clicked.connect(self.browse_photo)
+        self.create_button = QPushButton("Create Student")
         self.create_button.clicked.connect(self.create_student)
 
-    def browse_photo(self):
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, 'Open Photo File', '', 'Image Files (*.png *.jpg *.jpeg)')
-        if file_path:
-            self.photo_edit.setText(file_path)
+        self.read_button = QPushButton("Read Students")
+        self.read_button.clicked.connect(self.read_students)
 
-    def create_student(self):
-        # Get values from the form
-        name = self.name_edit.text()
-        date_of_birth = self.date_of_birth_edit.text()
-        grade = int(self.grade_edit.text())
-        group = self.group_edit.text()
-        photo_path = self.photo_edit.text()
+        self.update_button = QPushButton("Update Student")
+        self.update_button.clicked.connect(self.update_student)
 
-        # Read the binary content of the image file
-        with open(photo_path, 'rb') as photo_file:
-            photo_content = photo_file.read()
+        self.delete_button = QPushButton("Delete Student")
+        self.delete_button.clicked.connect(self.delete_student)
 
-        # Call the corresponding method in the main window
-        self.parent().create_student(name, date_of_birth, grade, group, photo_content)
-        self.accept()
+        layout = QVBoxLayout()
+        layout.addWidget(self.name_label)
+        layout.addWidget(self.name_input)
+        layout.addWidget(self.date_of_birth_label)
+        layout.addWidget(self.date_of_birth_input)
+        layout.addWidget(self.grade_label)
+        layout.addWidget(self.grade_input)
+        layout.addWidget(self.student_group_label)
+        layout.addWidget(self.student_group_input)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.create_button)
+        button_layout.addWidget(self.read_button)
+        button_layout.addWidget(self.update_button)
+        button_layout.addWidget(self.delete_button)
+
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
+
+    def read_students(self):
+        response = get(f"{SERVER_URL}/students/")
+
+        if response.status_code == 200:
+            students = response.json()
+            text = ""
+            for student in students:
+                text += f"ID: {student['id']}, Name: {student['name']}\n"
+            QMessageBox.information(self, "Students", text)
+        else:
+            QMessageBox.critical(self, "Error", f"Error reading students: {response.text}")
+
+    def clear_fields(self):
+        self.name_input.setText("")
+        self.date_of_birth_input.setText("")
+        self.grade_input.setText("")
+        self.student_group_input.setText("")
 
 
-class MainWindow(QMainWindow):
-    def __init__(self, api_client):
+class MainWindow(QWidget):
+    def __init__(self):
         super().__init__()
-
-        self.api_client = api_client
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle('Student database')
-
-        # Create widgets
-        self.buttons = [
-            ("Create Student", "/students/", self.show_create_student_form),
-            ("Upload Photo", "/students/{student_id}/photo", self.upload_photo),
-            ("Read Students", "/students/", self.read_students),
-            ("Read Student", "/students/{student_id}", self.read_student),
-            ("Delete Student", "/students/{student_id}", self.delete_student),
-        ]
+        self.setWindowTitle("Student database")
+        self.form = StudentForm()
 
         layout = QVBoxLayout()
 
-        for btn_text, endpoint, slot_function in self.buttons:
-            button = QPushButton(btn_text)
-            button.clicked.connect(slot_function)
-            layout.addWidget(button)
-
-        self.response_text = QTextEdit()
-        layout.addWidget(self.response_text)
-
-        central_widget = QWidget()
-        central_widget.setLayout(layout)
-        self.setCentralWidget(central_widget)
-
-    def show_create_student_form(self):
-        form = CreateStudentForm(self)
-        form.exec_()
-
-    def create_student(self, name, date_of_birth, grade, group, photo_content):
-        encoded_photo = base64.b64encode(photo_content).decode('utf-8')
-
-        student_data = {
-            "name": name,
-            "date_of_birth": date_of_birth,
-            "grade": grade,
-            "student_group": group,
-            "photo": encoded_photo
-        }
-
-        reply = self.api_client.make_request("POST", "/students/", student_data)
-
-        self.handle_response(reply)
-
-    def upload_photo(self):
-        # Implement the logic for uploading a photo
-        pass
-
-    def read_students(self):
-        # Implement the logic for reading students
-        pass
-
-    def read_student(self):
-        pass
-
-    def delete_student(self):
-        pass
-
-    def handle_response(self, reply):
-        if reply.error():
-            self.response_text.setText(f"Error: {reply.errorString()}")
-        else:
-            response_text = reply.readAll().data().decode('utf-8')
-            self.response_text.setText(response_text)
 
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    api_client = FastAPIClient()
-    window = MainWindow(api_client)
-    window.show()
-    sys.exit(app.exec_())
+
+
+
+
+
+
+
+
+
+
+
+
+
