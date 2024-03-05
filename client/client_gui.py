@@ -1,191 +1,135 @@
-from PyQt5.QtWidgets import (
-    QApplication,
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QFileDialog,
-    QMessageBox,
-    QDateEdit,
-    QTextEdit,
-)
-from PyQt5.QtCore import QDate, Qt
-from requests import post, get, delete
-
-SERVER_URL = "http://localhost:8000"
+from PyQt5.QtWidgets import *
+import requests
+import sys
 
 
-
-class CreateStudentDialog(QWidget):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.layout = QVBoxLayout()
-        self.name_label = QLabel("Name:")
+        self.setWindowTitle("Student database")
+        self.init_main_menu()
+
+    def init_main_menu(self):
+        # Create buttons
+        self.read_student_button = QPushButton("Read student", self)
+        self.read_students_button = QPushButton("Read students", self)
+        self.create_student_button = QPushButton("Create student", self)
+        self.upload_photo_button = QPushButton("Upload photo", self)
+        self.delete_student_button = QPushButton("Delete student", self)
+
+        # Connect buttons to functions
+        self.read_student_button.clicked.connect(self.read_student)
+        self.read_students_button.clicked.connect(self.read_students)
+        self.create_student_button.clicked.connect(self.create_student)
+        self.upload_photo_button.clicked.connect(self.upload_photo)
+        self.delete_student_button.clicked.connect(self.delete_student)
+
+        # Arrange buttons vertically
+        layout = QVBoxLayout()
+        layout.addWidget(self.read_student_button)
+        layout.addWidget(self.read_students_button)
+        layout.addWidget(self.create_student_button)
+        layout.addWidget(self.upload_photo_button)
+        layout.addWidget(self.delete_student_button)
+
+        # Set widget layout
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+
+    def read_student(self):
+        # Add code to open widget for reading student
+        pass
+
+    def read_students(self):
+        # Add code to open widget for reading students
+        pass
+
+    def create_student(self):
+        # Create a separate widget for creating a student
+        self.create_widget = QWidget()
+        layout = QVBoxLayout()
+
         self.name_input = QLineEdit()
-        self.date_of_birth_label = QLabel("Date of Birth:")
-        self.date_of_birth_input = QDateEdit()
-        self.date_of_birth_input.setCalendarPopup(True)
-        self.photo_label = QLabel("Photo:")
-        self.photo_button = QPushButton("Choose File")
-        self.photo_button.clicked.connect(self.choose_photo)
-        self.photo_path = None
-        self.grade_label = QLabel("Grade:")
+        self.date_of_birth_input = QLineEdit()
         self.grade_input = QLineEdit()
-        self.student_group_label = QLabel("Student Group:")
         self.student_group_input = QLineEdit()
-        self.save_button = QPushButton("Save")
-        self.save_button.clicked.connect(self.save_student)
-        self.layout.addWidget(self.name_label)
-        self.layout.addWidget(self.name_input)
-        self.layout.addWidget(self.date_of_birth_label)
-        self.layout.addWidget(self.date_of_birth_input)
-        self.layout.addWidget(self.photo_label)
-        self.layout.addWidget(self.photo_button)
-        self.layout.addWidget(self.grade_label)
-        self.layout.addWidget(self.grade_input)
-        self.layout.addWidget(self.student_group_label)
-        self.layout.addWidget(self.student_group_input)
-        self.layout.addWidget(self.save_button)
-        self.setLayout(self.layout)
+        self.photo_label = QLabel("Photo:")
+        self.photo_path_label = QLabel()
+        self.photo_button = QPushButton("Choose photo")
+        self.photo_button.clicked.connect(self.choose_photo)
+
+        submit_button = QPushButton("Create")
+        submit_button.clicked.connect(self.submit_create_student)
+
+        back_button = QPushButton("Back to main menu")
+        back_button.clicked.connect(self.init_main_menu)
+
+        layout.addWidget(QLabel("Name:"))
+        layout.addWidget(self.name_input)
+        layout.addWidget(QLabel("Date of birth (YYYY-MM-DD):"))
+        layout.addWidget(self.date_of_birth_input)
+        layout.addWidget(QLabel("Grade:"))
+        layout.addWidget(self.grade_input)
+        layout.addWidget(QLabel("Student group:"))
+        layout.addWidget(self.student_group_input)
+        layout.addWidget(self.photo_label)
+        layout.addWidget(self.photo_path_label)
+        layout.addWidget(self.photo_button)
+        layout.addWidget(submit_button)
+        layout.addWidget(back_button)
+
+        self.create_widget.setLayout(layout)
+        self.setCentralWidget(self.create_widget)
 
     def choose_photo(self):
-        self.photo_path, _ = QFileDialog.getOpenFileName(
-            self, "Choose photo", "", "Image Files (*.jpg *.png)"
-        )
+        # Open file dialog to choose a photo
+        file_dialog = QFileDialog()
+        file_dialog.setNameFilter("Images (*.png *.jpg *.jpeg)")
+        if file_dialog.exec_():
+            self.photo_path = file_dialog.selectedFiles()[0]
+            self.photo_path_label.setText(self.photo_path)
 
-    def save_student(self):
+    def submit_create_student(self):
+        # Get input values
         name = self.name_input.text()
-        date_of_birth = self.date_of_birth_input.date().toString(Qt.ISODate)
-        if not self.photo_path:
-            QMessageBox.warning(self, "Error", "Please select a photo")
-            return
-        with open(self.photo_path, "rb") as f:
-            photo = f.read()
-        grade = int(self.grade_input.text())
+        date_of_birth = self.date_of_birth_input.text()
+        grade = self.grade_input.text()
         student_group = self.student_group_input.text()
-        data = {
+
+        photo = None
+        if hasattr(self, 'photo_path') and self.photo_path:
+            with open(self.photo_path, 'rb') as file:
+                photo = file.read()
+
+        # Send request
+        url = "http://localhost:8000/students"
+        payload = {
             "name": name,
             "date_of_birth": date_of_birth,
-            "photo": photo,
-            "grade": grade,
+            "grade": int(grade),
             "student_group": student_group,
+            "photo": photo
         }
-        response = post(f"{SERVER_URL}/students", json=data)
+
+        response = requests.post(url, json=payload)
+
         if response.status_code == 200:
-            QMessageBox.information(self, "Success", "Student created successfully")
-            self.close()
+            print("Student created successfully")
         else:
-            QMessageBox.critical(self, "Error", f"Error creating student: {response.text}")
+            print("Bad request. Failed to create student")
+
+    def upload_photo(self):
+        # Add code to open widget for uploading photo
+        pass
+
+    def delete_student(self):
+        # Add code to open widget for deleting student
+        pass
 
 
-class ReadStudentDialog(QWidget):
-    def __init__(self, student_id):
-        super().__init__()
-        self.layout = QVBoxLayout()
-        self.name_label = QLabel("Name:")
-        self.name_value = QLabel("")
-        self.date_of_birth_label = QLabel("Date of Birth:")
-        self.date_of_birth_value = QLabel("")
-        self.photo_label = QLabel("Photo:")
-        self.photo_image = QLabel()
-        self.photo_image.setScaledContents(True)
-        self.grade
-
-
-
-from PyQt5.QtWidgets import (
-    QApplication,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QFileDialog,
-    QMessageBox,
-    QDateEdit,
-    QTextEdit,
-)
-from PyQt5.QtCore import QDate, Qt
-from requests import post, get, delete
-
-# Replace with your server URL
-SERVER_URL = "http://localhost:8000"
-
-
-class CreateStudentDialog(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.layout = QVBoxLayout()
-        self.name_label = QLabel("Name:")
-        self.name_input = QLineEdit()
-        self.date_of_birth_label = QLabel("Date of Birth:")
-        self.date_of_birth_input = QDateEdit()
-        self.date_of_birth_input.setCalendarPopup(True)
-        self.photo_label = QLabel("Photo:")
-        self.photo_button = QPushButton("Choose File")
-        self.photo_button.clicked.connect(self.choose_photo)
-        self.photo_path = None
-        self.grade_label = QLabel("Grade:")
-        self.grade_input = QLineEdit()
-        self.student_group_label = QLabel("Student Group:")
-        self.student_group_input = QLineEdit()
-        self.save_button = QPushButton("Save")
-        self.save_button.clicked.connect(self.save_student)
-        self.layout.addWidget(self.name_label)
-        self.layout.addWidget(self.name_input)
-        self.layout.addWidget(self.date_of_birth_label)
-        self.layout.addWidget(self.date_of_birth_input)
-        self.layout.addWidget(self.photo_label)
-        self.layout.addWidget(self.photo_button)
-        self.layout.addWidget(self.grade_label)
-        self.layout.addWidget(self.grade_input)
-        self.layout.addWidget(self.student_group_label)
-        self.layout.addWidget(self.student_group_input)
-        self.layout.addWidget(self.save_button)
-        self.setLayout(self.layout)
-
-    def choose_photo(self):
-        self.photo_path, _ = QFileDialog.getOpenFileName(
-            self, "Choose Photo", "", "Image Files (*.jpg *.png)"
-        )
-
-    def save_student(self):
-        name = self.name_input.text()
-        date_of_birth = self.date_of_birth_input.date().toString(Qt.ISODate)
-        if not self.photo_path:
-            QMessageBox.warning(self, "Error", "Please select a photo")
-            return
-        with open(self.photo_path, "rb") as f:
-            photo = f.read()
-        grade = int(self.grade_input.text())
-        student_group = self.student_group_input.text()
-        data = {
-            "name": name,
-            "date_of_birth": date_of_birth,
-            "photo": photo,
-            "grade": grade,
-            "student_group": student_group,
-        }
-        response = post(f"{SERVER_URL}/students", json=data)
-        if response.status_code == 200:
-            QMessageBox.information(self, "Success", "Student created successfully")
-            self.close()
-        else:
-            QMessageBox.critical(self, "Error", f"Error creating student: {response.text}")
-
-
-class ReadStudentDialog(QWidget):
-    def __init__(self, student_id):
-        super().__init__()
-        self.layout = QVBoxLayout()
-        self.name_label = QLabel("Name:")
-        self.name_value = QLabel("")
-        self.date_of_birth_label = QLabel("Date of Birth:")
-        self.date_of_birth_value = QLabel("")
-        self.photo_label = QLabel("Photo:")
-        self.photo_image = QLabel()
-        self.photo_image.setScaledContents(True)
-        self.grade = QLabel("Grade:")
-
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
