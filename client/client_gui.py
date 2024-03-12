@@ -1,5 +1,5 @@
 import base64
-
+from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel, QLineEdit, \
     QTextEdit, QFileDialog, QDialog, QFormLayout
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
@@ -46,10 +46,6 @@ class CreateStudentForm(QDialog):
         self.group_label = QLabel('Student Group:')
         self.group_edit = QLineEdit()
 
-        self.photo_label = QLabel('Photo path:')
-        self.photo_edit = QLineEdit()
-
-        self.browse_button = QPushButton('Browse')
         self.create_button = QPushButton('Create Student')
 
         layout = QFormLayout()
@@ -57,6 +53,42 @@ class CreateStudentForm(QDialog):
         layout.addRow(self.date_of_birth_label, self.date_of_birth_edit)
         layout.addRow(self.grade_label, self.grade_edit)
         layout.addRow(self.group_label, self.group_edit)
+        layout.addRow(self.create_button)
+
+        self.setLayout(layout)
+
+        self.create_button.clicked.connect(self.create_student)
+
+    def create_student(self):
+        # Get values from the form
+        name = self.name_edit.text()
+        date_of_birth = self.date_of_birth_edit.text()
+        grade = int(self.grade_edit.text())
+        group = self.group_edit.text()
+        # Call the corresponding method in the main window
+        self.parent().create_student(name, date_of_birth, grade, group)
+        self.accept()
+
+
+class UploadPhotoForm(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle('Upload photo Form')
+
+        self.id_label = QLabel('ID:')
+        self.id_edit = QLineEdit()
+
+        self.photo_label = QLabel('Photo path:')
+        self.photo_edit = QLineEdit()
+
+        self.browse_button = QPushButton('Browse')
+        self.create_button = QPushButton('Create Student')
+
+        layout = QFormLayout()
         layout.addRow(self.photo_label, self.photo_edit)
         layout.addRow(self.browse_button, self.create_button)
 
@@ -71,20 +103,9 @@ class CreateStudentForm(QDialog):
         if file_path:
             self.photo_edit.setText(file_path)
 
-    def create_student(self):
-        # Get values from the form
-        name = self.name_edit.text()
-        date_of_birth = self.date_of_birth_edit.text()
-        grade = int(self.grade_edit.text())
-        group = self.group_edit.text()
-        photo_path = self.photo_edit.text()
-
-        # Read the binary content of the image file
-        with open(photo_path, 'rb') as photo_file:
-            photo_content = photo_file.read()
-
+    def upload_student(self):
         # Call the corresponding method in the main window
-        self.parent().create_student(name, date_of_birth, grade, group, photo_content)
+        self.parent().create_student(name, date_of_birth, grade, group)
         self.accept()
 
 
@@ -125,20 +146,21 @@ class MainWindow(QMainWindow):
         form = CreateStudentForm(self)
         form.exec_()
 
-    def create_student(self, name, date_of_birth, grade, group, photo_content):
-        encoded_photo = base64.b64encode(photo_content).decode('utf-8')
-
+    def create_student(self, name, date_of_birth, grade, group):
         student_data = {
             "name": name,
             "date_of_birth": date_of_birth,
             "grade": grade,
             "student_group": group,
-            "photo": encoded_photo
         }
 
         reply = self.api_client.make_request("POST", "/students/", student_data)
 
         self.handle_response(reply)
+
+    def show_upload_photo_form(self):
+        form = UploadPhotoForm(self)
+        form.exec_()
 
     def upload_photo(self):
         # Implement the logic for uploading a photo

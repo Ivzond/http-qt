@@ -32,18 +32,15 @@ def get_db():
         db.close()
 
 
-@app.post("/students/", response_model=schemas.Student)
+@app.post("/students/", response_model=str)
 async def create_student(
         student: schemas.StudentCreate,
-        photo: UploadFile = File(...),
-        db: Session = Depends(get_db)):
-    try:
-        # Access photo file content using `photo.file.read()`
-        db_student = crud.create_student(db, student, photo.file.read())
-        return db_student
-    except Exception as exc:
-        logger.exception("Error in create_student endpoint: %s", str(exc))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        db: Session = Depends(get_db),):
+    # Access photo file content using `photo.file.read()`
+    if crud.create_student(db, student):
+        return "Student created successfully"
+    logger.exception("Error in create_student endpoint: %s")
+    raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/students/{student_id}/photo", response_model=str)

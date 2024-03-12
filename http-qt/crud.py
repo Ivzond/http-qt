@@ -13,22 +13,18 @@ def get_students(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Student).offset(skip).limit(limit).all()
 
 
-def create_student(db: Session, student: schemas.StudentCreate, encoded_photo: str):
-    photo_content = base64.b64decode(encoded_photo)
-
-    db_student = models.Student(**student.model_dump(), photo=photo_content)
+def create_student(db: Session, student: schemas.StudentCreate):
+    db_student = models.Student(**student.model_dump())
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
-    return db_student
+    return True
 
 
-def upload_photo(db: Session, student_id: int, photo: UploadFile):
+def upload_photo(db: Session, student_id: int, photo_content: bytes):
     db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if db_student is None:
         raise HTTPException(status_code=404, detail="Student not found")
-    photo_content = photo.file.read()
-
     db_student.photo = photo_content
     db.commit()
     db.refresh(db_student)

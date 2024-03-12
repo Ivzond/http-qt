@@ -3,9 +3,17 @@
   <database-model serializer="dbm" dbms="POSTGRES" family-id="POSTGRES" format-version="4.51">
     <root id="1">
       <DateStyle>dmy</DateStyle>
-      <IntrospectionStateNumber>791</IntrospectionStateNumber>
+      <Grants>1||-9223372036854775808|c|G
+1||10|c|G
+1||10|C|G
+1||10|T|G
+13798||-9223372036854775808|c|G
+13798||10|c|G
+13798||10|C|G
+13798||10|T|G</Grants>
+      <IntrospectionStateNumber>888</IntrospectionStateNumber>
       <ServerVersion>14.10</ServerVersion>
-      <StartupTime>1705592673</StartupTime>
+      <StartupTime>1708010126</StartupTime>
       <TimeZones>true ACDT
 true ACSST
 false ACST
@@ -1400,7 +1408,7 @@ false posixrules
 13433||10|C|G
 13433||-9223372036854775808|U|G
 13433||10|U|G</Grants>
-      <IntrospectionStateNumber>791</IntrospectionStateNumber>
+      <IntrospectionStateNumber>888</IntrospectionStateNumber>
       <ObjectId>16451</ObjectId>
       <OwnerName>postgres</OwnerName>
     </database>
@@ -4834,8 +4842,8 @@ false posixrules
     <schema id="263" parent="2" name="public">
       <Comment>standard public schema</Comment>
       <Current>1</Current>
-      <IntrospectionStateNumber>791</IntrospectionStateNumber>
-      <LastIntrospectionLocalTimestamp>2024-01-23.08:40:25</LastIntrospectionLocalTimestamp>
+      <IntrospectionStateNumber>888</IntrospectionStateNumber>
+      <LastIntrospectionLocalTimestamp>2024-02-20.14:58:31</LastIntrospectionLocalTimestamp>
       <ObjectId>2200</ObjectId>
       <StateNumber>526</StateNumber>
       <OwnerName>postgres</OwnerName>
@@ -4902,7 +4910,16 @@ false posixrules
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
     </index>
-    <key id="273" parent="265" name="students_pkey">
+    <index id="273" parent="265" name="students_name_idx">
+      <ColNames>name</ColNames>
+      <ObjectId>16540</ObjectId>
+      <StateNumber>887</StateNumber>
+      <AccessMethodId>403</AccessMethodId>
+      <CollationNames>default</CollationNames>
+      <CollationIds>100</CollationIds>
+      <CollationParentNames>pg_catalog</CollationParentNames>
+    </index>
+    <key id="274" parent="265" name="students_pkey">
       <NameSurrogate>1</NameSurrogate>
       <ObjectId>16467</ObjectId>
       <Primary>1</Primary>
