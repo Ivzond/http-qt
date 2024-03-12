@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import *
 import requests
 import sys
+import base64
 
 
 class MainWindow(QMainWindow):
@@ -97,21 +98,21 @@ class MainWindow(QMainWindow):
         grade = self.grade_input.text()
         student_group = self.student_group_input.text()
 
-        photo = None
-        if hasattr(self, 'photo_path') and self.photo_path:
-            with open(self.photo_path, 'rb') as file:
-                photo = file.read()
-
-        # Send request
-        url = "http://localhost:8000/students"
         payload = {
             "name": name,
             "date_of_birth": date_of_birth,
             "grade": int(grade),
             "student_group": student_group,
-            "photo": photo
         }
+        if hasattr(self, 'photo_path') and self.photo_path:
+            with open(self.photo_path, 'rb') as file:
+                photo_content = file.read()
+            # Encode photo content as base64 string
+            photo_encoded = base64.b64encode(photo_content).decode('utf-8')
+            payload["photo"] = photo_encoded
 
+        # Send request
+        url = "http://localhost:8000/students"
         response = requests.post(url, json=payload)
 
         if response.status_code == 200:
