@@ -36,7 +36,6 @@ def get_db():
 async def create_student(
         student: schemas.StudentCreate,
         db: Session = Depends(get_db),):
-    # Access photo file content using `photo.file.read()`
     if crud.create_student(db, student):
         return "Student created successfully"
     logger.exception("Error in create_student endpoint: %s")

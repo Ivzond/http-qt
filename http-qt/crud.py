@@ -1,16 +1,20 @@
-import base64
-
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from . import models, schemas
 
 
 def get_student(db: Session, student_id: int):
-    return db.query(models.Student).filter(models.Student.id == student_id).first()
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if student is None:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return student
 
 
 def get_students(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Student).offset(skip).limit(limit).all()
+    students = db.query(models.Student).offset(skip).limit(limit).all()
+    if not students:
+        raise HTTPException(status_code=404, detail="No students found")
+    return students
 
 
 def create_student(db: Session, student: schemas.StudentCreate):

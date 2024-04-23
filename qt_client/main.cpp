@@ -1,11 +1,13 @@
-#include "mainwindow.h"
+#include "clientwindow.h"
 
 #include <QApplication>
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
-    return a.exec();
+    QApplication app(argc, argv);
+    ClientWindow clientWindow;
+    clientWindow.resize(400, 300);
+    clientWindow.show();
+
+    return app.exec();
 }
