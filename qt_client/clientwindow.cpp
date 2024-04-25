@@ -3,6 +3,7 @@
 #include <QFormLayout>
 #include <QJsonObject>
 #include <QHttpMultiPart>
+#include <QImageIOHandler>
 
 ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
     createStudentButton = new QPushButton("Create Student", this);
@@ -150,7 +151,6 @@ void ClientWindow::uploadPhotoRequest() {
 }
 
 void ClientWindow::readStudentsRequest() {
-    // Send request to read students
     QNetworkRequest request(QUrl("http://localhost:8000/students/"));
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
@@ -172,23 +172,38 @@ void ClientWindow::displayStudents(const QJsonArray &students) {
 
     QTableWidget *tableWidget = new QTableWidget(dialog);
     tableWidget->setRowCount(students.size());
-    tableWidget->setColumnCount(5);
-    tableWidget->setHorizontalHeaderLabels({"ID", "Name", "Date of Birth", "Grade", "Group"});
+    tableWidget->setColumnCount(6);
+    tableWidget->setHorizontalHeaderLabels({"ID", "Имя", "Фото", "Дата рождения", "Курс", "Номер группы"});
 
     for (int i = 0; i < students.size(); i++) {
         QJsonObject student = students.at(i).toObject();
-        QTableWidgetItem *idItem = new QTableWidgetItem(student["id"].toString());
+        QTableWidgetItem *idItem = new QTableWidgetItem(QString::number(student["id"].toInt()));
         QTableWidgetItem *nameItem = new QTableWidgetItem(student["name"].toString());
         QTableWidgetItem *dobItem = new QTableWidgetItem(student["date_of_birth"].toString());
-        QTableWidgetItem *gradeItem = new QTableWidgetItem(student["grade"].toString());
-        QTableWidgetItem *groupItem = new QTableWidgetItem(student["group"].toString());
+        QTableWidgetItem *gradeItem = new QTableWidgetItem(QString::number(student["grade"].toInt()));
+        QTableWidgetItem *groupItem = new QTableWidgetItem(student["student_group"].toString());
+
+        QByteArray photoData = QByteArray::fromBase64(student["photo"].toString().toUtf8());
+
+        QPixmap photoPixmap;
+        photoPixmap.loadFromData(photoData);
+
+        QLabel *photoLabel = new QLabel;
+        photoLabel->setPixmap(photoPixmap.scaled(100, 100, Qt::KeepAspectRatio));
 
         tableWidget->setItem(i, 0, idItem);
         tableWidget->setItem(i, 1, nameItem);
-        tableWidget->setItem(i, 2, dobItem);
-        tableWidget->setItem(i, 3, gradeItem);
-        tableWidget->setItem(i, 4, groupItem);
+        tableWidget->setCellWidget(i, 2, photoLabel);
+        tableWidget->setItem(i, 3, dobItem);
+        tableWidget->setItem(i, 4, gradeItem);
+        tableWidget->setItem(i, 5, groupItem);
     }
+    tableWidget->resizeColumnsToContents();
+    tableWidget->resizeRowsToContents();
+    QSize tableSize = tableWidget->sizeHint();
+    QSize minSize = QSize(qMax(800, tableSize.width()), qMax(600, tableSize.height()));
+    dialog->setMinimumSize(minSize);
+
     layout->addWidget(tableWidget);
     dialog->setLayout(layout);
     dialog->exec();
@@ -201,7 +216,7 @@ void ClientWindow::openReadStudentWindow() {
     readStudentIDLineEdit = new QLineEdit(dialog);
     readStudentIDLineEdit->setPlaceholderText("ID студента");
 
-    QPushButton *sendButton = new QPushButton("Send", dialog);
+    QPushButton *sendButton = new QPushButton("Отправить", dialog);
     connect(sendButton, &QPushButton::clicked, this, &ClientWindow::readStudentRequest);
 
     layout->addWidget(readStudentIDLineEdit);
@@ -231,24 +246,26 @@ void ClientWindow::displayStudent(const QJsonObject &student) {
     QDialog *dialog = new QDialog(this);
     QVBoxLayout *layout = new QVBoxLayout(dialog);
 
-    QLabel *idLabel = new QLabel("ID: " + student["id"].toString(), dialog);
-    QLabel *nameLabel = new QLabel("Name: " + student["name"].toString(), dialog);
-    QLabel *dobLabel = new QLabel("Date of Birth: " + student["date_of_birth"].toString(), dialog);
-    QLabel *gradeLabel = new QLabel("grade: " + QString::number(student["grade"].toInt()), dialog);
-    QLabel *groupLabel = new QLabel("group: " + student["group"].toString(), dialog);
+    QLabel *idLabel = new QLabel("ID: " + QString::number(student["id"].toInt()), dialog);
+    QLabel *nameLabel = new QLabel("Имя: " + student["name"].toString(), dialog);
+    QLabel *dobLabel = new QLabel("Дата рождения: " + student["date_of_birth"].toString(), dialog);
+    QLabel *gradeLabel = new QLabel("Курс: " + QString::number(student["grade"].toInt()), dialog);
+    QLabel *groupLabel = new QLabel("Номер группы: " + student["student_group"].toString(), dialog);
 
     QByteArray photoData = QByteArray::fromBase64(student["photo"].toString().toUtf8());
-    QPixmap photoPixmap;
-    photoPixmap.loadFromData(photoData);
+    QImage image;
+    image.loadFromData(photoData);
+    image = image.convertToFormat(QImage::Format_RGB888);
+
     QLabel *photoLabel = new QLabel(dialog);
-    photoLabel->setPixmap(photoPixmap.scaled(100, 100, Qt::KeepAspectRatio));
+    photoLabel->setPixmap(QPixmap::fromImage(image).scaled(150, 150, Qt::KeepAspectRatio));
 
     layout->addWidget(idLabel);
     layout->addWidget(nameLabel);
+    layout->addWidget(photoLabel);
     layout->addWidget(dobLabel);
     layout->addWidget(gradeLabel);
     layout->addWidget(groupLabel);
-    layout->addWidget(photoLabel);
 
     dialog->setLayout(layout);
     dialog->exec();
@@ -261,7 +278,7 @@ void ClientWindow::openDeleteStudentWindow() {
     deleteStudentIDLineEdit = new QLineEdit(dialog);
     deleteStudentIDLineEdit->setPlaceholderText("ID студента");
 
-    QPushButton *sendButton = new QPushButton("Send", dialog);
+    QPushButton *sendButton = new QPushButton("Отправить", dialog);
     connect(sendButton, &QPushButton::clicked, this, &ClientWindow::deleteStudentRequest);
 
     layout->addWidget(deleteStudentIDLineEdit);
@@ -277,10 +294,10 @@ void ClientWindow::deleteStudentRequest() {
     QNetworkReply *reply = networkManager->deleteResource(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
-            QMessageBox::information(this, "Success", "Student deleted successfully");
+            QMessageBox::information(this, "Успешно", "Студент успешно удален");
             deleteStudentIDLineEdit->clear();
         } else {
-            QMessageBox::warning(this, "Error", "Failed to delete student");
+            QMessageBox::warning(this, "Ошибка", "Не удалось удалить студента");
         }
         reply->deleteLater();
     });
