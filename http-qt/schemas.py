@@ -23,6 +23,7 @@ class StudentCreate(BaseModel):
 class Student(StudentBase):
     id: int
 
-
-class Config:
-    orm_mode = True
+    class Config:
+        orm_mode = True
+        from_attributes = True
+        exclude = ("photo",)

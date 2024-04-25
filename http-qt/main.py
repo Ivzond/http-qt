@@ -1,3 +1,5 @@
+import base64
+
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, File, UploadFile
 from sqlalchemy.orm import Session
 import logging
@@ -13,12 +15,14 @@ logger = logging.getLogger(__name__)
 
 @app.middleware("http")
 async def db_session_middleware(request: Request, call_next):
-    response = Response("Internal server error", status_code=500)
     try:
         request.state.db = SessionLocal()
         response = await call_next(request)
     except HTTPException as exc:
         response = exc
+    except Exception as e:
+        logger.exception("Internal server error: %s", e)
+        response = Response("Internal server error", status_code=500)
     finally:
         request.state.db.close()
         return response
@@ -51,16 +55,27 @@ async def upload_photo(student_id: int, photo: UploadFile = File(...), db: Sessi
 
 @app.get("/students/", response_model=list[schemas.Student])
 async def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    students = crud.get_students(db, skip=skip, limit=limit)
-    return students
+    try:
+        students = crud.get_students(db, skip=skip, limit=limit)
+        for student in students:
+            student.photo = base64.b64encode(student.photo).decode("utf-8")
+        return students
+    except Exception as e:
+        logger.exception("Error while retrieving students: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/students/{student_id}", response_model=schemas.Student)
 async def read_student(student_id: int, db: Session = Depends(get_db)):
-    db_student = crud.get_student(db, student_id)
-    if db_student is None:
-        return HTTPException(status_code=404, detail="Student not found")
-    return db_student
+    try:
+        db_student = crud.get_student(db, student_id)
+        if db_student is None:
+            return HTTPException(status_code=404, detail="Student not found")
+        db_student.photo = base64.b64encode(db_student.photo).decode("utf-8")
+        return db_student
+    except Exception as e:
+        logger.exception("Error while retrieving student: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.delete("/students/{student_id}", response_model=str)

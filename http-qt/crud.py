@@ -1,13 +1,20 @@
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from . import models, schemas
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_student(db: Session, student_id: int):
-    student = db.query(models.Student).filter(models.Student.id == student_id).first()
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
-    return student
+    try:
+        student = db.query(models.Student).filter(models.Student.id == student_id).first()
+        if student is None:
+            raise HTTPException(status_code=404, detail="Student not found")
+        return student
+    except Exception as e:
+        logger.exception("Error while retrieving student: %s", e)
+        raise
 
 
 def get_students(db: Session, skip: int = 0, limit: int = 100):
