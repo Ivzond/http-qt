@@ -6,11 +6,11 @@
 #include <QImageIOHandler>
 
 ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
-    createStudentButton = new QPushButton("Create Student", this);
-    uploadPhotoButton = new QPushButton("Upload Photo", this);
-    readStudentsButton = new QPushButton("Read Students", this);
-    readStudentButton = new QPushButton("Read Student", this);
-    deleteStudentButton = new QPushButton("Delete Student", this);
+    createStudentButton = new QPushButton("Создать запись о студенте", this);
+    uploadPhotoButton = new QPushButton("Загрузить фото студента", this);
+    readStudentsButton = new QPushButton("Прочитать записи о студентах", this);
+    readStudentButton = new QPushButton("Прочитать запись о студенте", this);
+    deleteStudentButton = new QPushButton("Удалить запись о студенте", this);
 
     connect(createStudentButton, &QPushButton::clicked, this, &ClientWindow::openCreateStudentWindow);
     connect(uploadPhotoButton, &QPushButton::clicked, this, &ClientWindow::openUploadPhotoWindow);
@@ -43,12 +43,12 @@ void ClientWindow::openCreateStudentWindow() {
     createStudentGroupLineEdit = new QLineEdit(dialog);
     createStudentGroupLineEdit->setPlaceholderText("Номер группы");
 
-    formLayout->addRow("Name:", createStudentNameLineEdit);
-    formLayout->addRow("Date of Birth:", createStudentDOBLineEdit);
-    formLayout->addRow("Grade:", createStudentGradeLineEdit);
-    formLayout->addRow("Group:", createStudentGroupLineEdit);
+    formLayout->addRow("Имя:", createStudentNameLineEdit);
+    formLayout->addRow("Дата рождения:", createStudentDOBLineEdit);
+    formLayout->addRow("Номер курса:", createStudentGradeLineEdit);
+    formLayout->addRow("Номер группы:", createStudentGroupLineEdit);
 
-    QPushButton *sendButton = new QPushButton("Send", dialog);
+    QPushButton *sendButton = new QPushButton("Создать запись", dialog);
     connect(sendButton, &QPushButton::clicked, this, &ClientWindow::createStudentRequest);
     formLayout->addRow(sendButton);
 
@@ -75,10 +75,10 @@ void ClientWindow::createStudentRequest() {
     QNetworkReply *reply = networkManager->post(request, QJsonDocument(json).toJson());
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
-            QMessageBox::information(this, "Success", "Student created successfully");
+            QMessageBox::information(this, "Отлично", "Запись успешно создана");
             clearInputFields();
         } else {
-            QMessageBox::warning(this, "Error", "Failed to create student");
+            QMessageBox::warning(this, "Ошибка", "Не удалось создать запись");
         }
         reply->deleteLater();
     });
@@ -91,27 +91,27 @@ void ClientWindow::openUploadPhotoWindow() {
     uploadPhotoStudentIDLineEdit = new QLineEdit(dialog);
     uploadPhotoStudentIDLineEdit->setPlaceholderText("ID студента");
 
-    uploadPhotoSelectButton = new QPushButton("Select Photo", dialog);
+    uploadPhotoSelectButton = new QPushButton("Выбрать фото", dialog);
 
     connect(uploadPhotoSelectButton, &QPushButton::clicked, [this, dialog]() {
-        QString filePath = QFileDialog::getOpenFileName(this, "Select Photo", "", "Image Files (*.jpg *.png)");
+        QString filePath = QFileDialog::getOpenFileName(this, "Выбрать фото", "", "Image Files (*.jpg *.png)");
             if (filePath.isEmpty()) {
                 return;
             }
         QFile file(filePath);
         if (file.open(QIODevice::ReadOnly)) {
             imageData = file.readAll();
-            uploadPhotoLabel->setText(QString("Photo selected: %1").arg(filePath));
+            uploadPhotoLabel->setText(QString("Фото выбрано: %1").arg(filePath));
             file.close();
         }
     });
     layout->addWidget(uploadPhotoStudentIDLineEdit);
     layout->addWidget(uploadPhotoSelectButton);
 
-    uploadPhotoLabel = new QLabel("No photo selected", dialog);
+    uploadPhotoLabel = new QLabel("Фото не выбрано", dialog);
     layout->addWidget(uploadPhotoLabel);
 
-    QPushButton *sendButton = new QPushButton("Send", dialog);
+    QPushButton *sendButton = new QPushButton("Загрузить фотографию", dialog);
     connect(sendButton, &QPushButton::clicked, this, &ClientWindow::uploadPhotoRequest);
     layout->addWidget(sendButton);
 
@@ -123,7 +123,7 @@ void ClientWindow::uploadPhotoRequest() {
     QString studentID = uploadPhotoStudentIDLineEdit->text();
 
     if (imageData.isEmpty()) {
-        QMessageBox::warning(this, "Error", "No photo selected");
+        QMessageBox::warning(this, "Error", "Фото не выбрано");
         return;
     }
 
@@ -140,11 +140,11 @@ void ClientWindow::uploadPhotoRequest() {
 
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
-            QMessageBox::information(this, "Success", "Photo uploaded successfully");
+            QMessageBox::information(this, "Отлично", "Фото успешно загружено");
             uploadPhotoStudentIDLineEdit->clear();
             uploadPhotoLabel->clear();
         } else {
-            QMessageBox::warning(this, "Error", "Failed to upload photo: " + reply->errorString());
+            QMessageBox::warning(this, "Ошибка", "Не удалось загрузить фото: " + reply->errorString());
         }
         reply->deleteLater();
     });
@@ -160,7 +160,7 @@ void ClientWindow::readStudentsRequest() {
             QJsonArray students = jsonDocument.array();
             displayStudents(students);
         } else {
-            QMessageBox::warning(this, "Error", "Failed to read students");
+            QMessageBox::warning(this, "Ошибка", "Не удалось прочитать записи");
         }
         reply->deleteLater();
     });
@@ -216,7 +216,7 @@ void ClientWindow::openReadStudentWindow() {
     readStudentIDLineEdit = new QLineEdit(dialog);
     readStudentIDLineEdit->setPlaceholderText("ID студента");
 
-    QPushButton *sendButton = new QPushButton("Отправить", dialog);
+    QPushButton *sendButton = new QPushButton("Прочитать запись", dialog);
     connect(sendButton, &QPushButton::clicked, this, &ClientWindow::readStudentRequest);
 
     layout->addWidget(readStudentIDLineEdit);
@@ -236,7 +236,7 @@ void ClientWindow::readStudentRequest() {
             QJsonObject student = QJsonDocument::fromJson(responseData).object();
             displayStudent(student);
         } else {
-            QMessageBox::warning(this, "Error", "Failed to fetch student");
+            QMessageBox::warning(this, "Ошибка", "Не удалось прочитать запись");
         }
         reply->deleteLater();
     });
@@ -294,7 +294,7 @@ void ClientWindow::deleteStudentRequest() {
     QNetworkReply *reply = networkManager->deleteResource(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
-            QMessageBox::information(this, "Успешно", "Студент успешно удален");
+            QMessageBox::information(this, "Отлично", "Запись успешно удалена");
             deleteStudentIDLineEdit->clear();
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось удалить студента");
