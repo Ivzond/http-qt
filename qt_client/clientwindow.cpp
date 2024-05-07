@@ -4,6 +4,8 @@
 #include <QJsonObject>
 #include <QHttpMultiPart>
 #include <QImageIOHandler>
+#include <QCryptographicHash>
+#include <QFile>
 
 ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
     createStudentButton = new QPushButton("Создать запись о студенте", this);
@@ -28,6 +30,15 @@ ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
     setLayout(layout);
 
     networkManager = new QNetworkAccessManager(this);
+    loadSettings();
+}
+
+void ClientWindow::loadSettings() {
+    QSettings settings("config.ini", QSettings::IniFormat);
+    settings.beginGroup("CLIENT");
+    username = settings.value("username").toString();
+    passwordHash = settings.value("password_hash").toString();
+    settings.endGroup();
 }
 
 void ClientWindow::openCreateStudentWindow() {
@@ -71,6 +82,10 @@ void ClientWindow::createStudentRequest() {
 
     QNetworkRequest request(QUrl("http://localhost:8000/students/"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
+    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
+    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
 
     QNetworkReply *reply = networkManager->post(request, QJsonDocument(json).toJson());
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
@@ -134,6 +149,9 @@ void ClientWindow::uploadPhotoRequest() {
     multiPart->append(imagePart);
 
     QNetworkRequest request(QUrl(QString("http://localhost:8000/students/%1/photo").arg(studentID)));
+    QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
+    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
+    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
 
     QNetworkReply *reply = networkManager->post(request, multiPart);
     multiPart->setParent(reply); // delete the multiPart with the reply
@@ -152,6 +170,10 @@ void ClientWindow::uploadPhotoRequest() {
 
 void ClientWindow::readStudentsRequest() {
     QNetworkRequest request(QUrl("http://localhost:8000/students/"));
+    QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
+    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
+    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
+
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
@@ -229,6 +251,10 @@ void ClientWindow::openReadStudentWindow() {
 void ClientWindow::readStudentRequest() {
     QString studentID = readStudentIDLineEdit->text();
     QNetworkRequest request(QUrl(QString("http://localhost:8000/students/%1").arg(studentID)));
+    QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
+    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
+    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
+
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
@@ -291,6 +317,10 @@ void ClientWindow::openDeleteStudentWindow() {
 void ClientWindow::deleteStudentRequest() {
     QString studentID = deleteStudentIDLineEdit->text();
     QNetworkRequest request(QUrl(QString("http://localhost:8000/students/%1").arg(studentID)));
+    QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
+    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
+    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
+
     QNetworkReply *reply = networkManager->deleteResource(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {

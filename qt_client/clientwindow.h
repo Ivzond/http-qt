@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QTableWidget>
+#include <QSettings>
 
 class ClientWindow : public QWidget {
     Q_OBJECT
@@ -49,10 +50,13 @@ private:
     QByteArray imageData;
 
     QNetworkAccessManager *networkManager;
+    QString username;
+    QString passwordHash;
 
     void clearInputFields();
     void displayStudents(const QJsonArray &students);
     void displayStudent(const QJsonObject &student);
+    void loadSettings();
 };
 
 #endif // CLIENTWINDOW_H

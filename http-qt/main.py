@@ -1,8 +1,10 @@
 import base64
+import configparser
+import logging.config
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, File, UploadFile
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.orm import Session
-import logging
 
 from . import crud
 from . import schemas
@@ -11,6 +13,16 @@ from .database import SessionLocal
 app = FastAPI(debug=True)
 
 logger = logging.getLogger(__name__)
+logging.config.fileConfig('logging.conf')
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+security = HTTPBasic()
+
+
+def get_settings():
+    return config['SETTINGS']
 
 
 @app.middleware("http")
@@ -19,6 +31,7 @@ async def db_session_middleware(request: Request, call_next):
         request.state.db = SessionLocal()
         response = await call_next(request)
     except HTTPException as exc:
+        logger.exception("HTTPException: %s", exc)
         response = exc
     except Exception as e:
         logger.exception("Internal server error: %s", e)
@@ -39,34 +52,65 @@ def get_db():
 @app.post("/students/", response_model=str)
 async def create_student(
         student: schemas.StudentCreate,
-        db: Session = Depends(get_db),):
-    if crud.create_student(db, student):
-        return "Student created successfully"
-    logger.exception("Error in create_student endpoint: %s")
-    raise HTTPException(status_code=500, detail="Internal server error")
+        db: Session = Depends(get_db),
+        settings: dict = Depends(get_settings),
+        credentials: HTTPBasicCredentials = Depends(security)):
+    try:
+        if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        if crud.create_student(db, student):
+            return "Student created successfully"
+    except Exception as e:
+        logger.exception("Error in create_student endpoint: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/students/{student_id}/photo", response_model=str)
-async def upload_photo(student_id: int, photo: UploadFile = File(...), db: Session = Depends(get_db)):
-    if crud.upload_photo(db, student_id, photo.file.read()):
-        return "Photo uploaded successfully"
-    raise HTTPException(status_code=404, detail="Student not found")
+async def upload_photo(
+        student_id: int,
+        photo: UploadFile = File(...),
+        db: Session = Depends(get_db),
+        settings: dict = Depends(get_settings),
+        credentials: HTTPBasicCredentials = Depends(security)):
+    try:
+        if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        if crud.upload_photo(db, student_id, photo.file.read()):
+            return "Photo uploaded successfully"
+    except Exception as e:
+        logger.exception("Error in upload_photo endpoint: %s", e)
+        raise HTTPException(status_code=404, detail="Student not found")
 
 
 @app.get("/students/", response_model=list[schemas.Student])
-async def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def read_students(
+        skip: int = 0,
+        limit: int = 100,
+        db: Session = Depends(get_db),
+        settings: dict = Depends(get_settings),
+        credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         students = crud.get_students(db, skip=skip, limit=limit)
         for student in students:
             student.photo = base64.b64encode(student.photo).decode("utf-8")
         return students
     except Exception as e:
-        logger.exception("Error while retrieving students: %s", e)
+        logger.exception("Error in read_students endpoint: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/students/{student_id}", response_model=schemas.Student)
-async def read_student(student_id: int, db: Session = Depends(get_db)):
+async def read_student(
+        student_id: int,
+        db: Session = Depends(get_db),
+        settings: dict = Depends(get_settings),
+        credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         db_student = crud.get_student(db, student_id)
         if db_student is None:
@@ -74,12 +118,21 @@ async def read_student(student_id: int, db: Session = Depends(get_db)):
         db_student.photo = base64.b64encode(db_student.photo).decode("utf-8")
         return db_student
     except Exception as e:
-        logger.exception("Error while retrieving student: %s", e)
+        logger.exception("Error in read_student endpoint: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.delete("/students/{student_id}", response_model=str)
-async def delete_student(student_id: int, db: Session = Depends(get_db)):
-    if crud.delete_student(db, student_id):
-        return "Deleted successfully"
-    raise HTTPException(status_code=404, detail="Student not found")
+async def delete_student(
+        student_id: int,
+        db: Session = Depends(get_db),
+        settings: dict = Depends(get_settings),
+        credentials: HTTPBasicCredentials = Depends(security)):
+    try:
+        if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        if crud.delete_student(db, student_id):
+            return "Deleted successfully"
+    except Exception as e:
+        logger.exception("Error in delete_student endpoint: %s", e)
+        raise HTTPException(status_code=404, detail="Student not found")
