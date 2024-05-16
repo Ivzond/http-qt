@@ -1,3 +1,4 @@
+import os
 import base64
 import configparser
 import logging
@@ -12,8 +13,12 @@ from server.src.http_server.database import SessionLocal
 
 app = FastAPI(debug=True)
 
+base_dir = os.path.dirname(__file__)
+config_file_path = os.path.join(base_dir, 'config.ini')
+logging_config_file_path = os.path.join(base_dir, 'logging.conf')
+
 config = configparser.ConfigParser()
-config.read('server/src/http_server/config.ini')
+config.read(config_file_path)
 
 username = config.get('SETTINGS', 'username')
 password_hash = config.get('SETTINGS', 'password_hash')
@@ -21,7 +26,7 @@ log_level = config.get('SETTINGS', 'log_level')
 log_path = config.get('SETTINGS', 'log_path')
 
 fileConfig('server/src/http_server/logging.conf', defaults={'log_path': log_path})
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('app')
 
 
 security = HTTPBasic()
@@ -67,6 +72,7 @@ async def create_student(
         credentials: HTTPBasicCredentials = Depends(authenticate)):
     try:
         if crud.create_student(db, student):
+            logger.info("Student created successfully: %s", student.name)
             return "Student created successfully"
     except Exception as e:
         logger.exception("Error in create_student endpoint: %s", e)
@@ -81,6 +87,7 @@ async def upload_photo(
         credentials: HTTPBasicCredentials = Depends(authenticate)):
     try:
         if crud.upload_photo(db, student_id, photo.file.read()):
+            logger.info("Photo uploaded successfully for student ID: %d", student_id)
             return "Photo uploaded successfully"
     except Exception as e:
         logger.exception("Error in upload_photo endpoint: %s", e)
@@ -97,6 +104,7 @@ async def read_students(
         students = crud.get_students(db, skip=skip, limit=limit)
         for student in students:
             student.photo = base64.b64encode(student.photo).decode("utf-8")
+        logger.info("Students retrieved successfully: count=%d", len(students))
         return students
     except Exception as e:
         logger.exception("Error in read_students endpoint: %s", e)
@@ -113,6 +121,7 @@ async def read_student(
         if db_student is None:
             raise HTTPException(status_code=404, detail="Student not found")
         db_student.photo = base64.b64encode(db_student.photo).decode("utf-8")
+        logger.info("Student retrieved successfully: %s", db_student.name)
         return db_student
     except Exception as e:
         logger.exception("Error in read_student endpoint: %s", e)
@@ -126,6 +135,7 @@ async def delete_student(
         credentials: HTTPBasicCredentials = Depends(authenticate)):
     try:
         if crud.delete_student(db, student_id):
+            logger.info("Student deleted successfully: ID=%d", student_id)
             return "Deleted successfully"
     except Exception as e:
         logger.exception("Error in delete_student endpoint: %s", e)
