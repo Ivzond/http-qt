@@ -1,22 +1,28 @@
 import base64
 import configparser
-import logging.config
+import logging
+from logging.config import fileConfig
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, File, UploadFile
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.orm import Session
 
-from . import crud
-from . import schemas
-from .database import SessionLocal
+from server.src.http_server import crud, schemas
+from server.src.http_server.database import SessionLocal
 
 app = FastAPI(debug=True)
 
-logger = logging.getLogger(__name__)
-logging.config.fileConfig('logging.conf')
-
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('server/src/http_server/config.ini')
+
+username = config.get('SETTINGS', 'username')
+password_hash = config.get('SETTINGS', 'password_hash')
+log_level = config.get('SETTINGS', 'log_level')
+log_path = config.get('SETTINGS', 'log_path')
+
+fileConfig('server/src/http_server/logging.conf', defaults={'log_path': log_path})
+logger = logging.getLogger(__name__)
+
 
 security = HTTPBasic()
 
@@ -38,7 +44,7 @@ async def db_session_middleware(request: Request, call_next):
         response = Response("Internal server error", status_code=500)
     finally:
         request.state.db.close()
-        return response
+    return response
 
 
 def get_db():
@@ -49,16 +55,17 @@ def get_db():
         db.close()
 
 
+def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username != username or credentials.password != password_hash:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
 @app.post("/students/", response_model=str)
 async def create_student(
         student: schemas.StudentCreate,
         db: Session = Depends(get_db),
-        settings: dict = Depends(get_settings),
-        credentials: HTTPBasicCredentials = Depends(security)):
+        credentials: HTTPBasicCredentials = Depends(authenticate)):
     try:
-        if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
-            raise HTTPException(status_code=401, detail="Unauthorized")
-
         if crud.create_student(db, student):
             return "Student created successfully"
     except Exception as e:
@@ -71,12 +78,8 @@ async def upload_photo(
         student_id: int,
         photo: UploadFile = File(...),
         db: Session = Depends(get_db),
-        settings: dict = Depends(get_settings),
-        credentials: HTTPBasicCredentials = Depends(security)):
+        credentials: HTTPBasicCredentials = Depends(authenticate)):
     try:
-        if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
-            raise HTTPException(status_code=401, detail="Unauthorized")
-
         if crud.upload_photo(db, student_id, photo.file.read()):
             return "Photo uploaded successfully"
     except Exception as e:
@@ -89,10 +92,7 @@ async def read_students(
         skip: int = 0,
         limit: int = 100,
         db: Session = Depends(get_db),
-        settings: dict = Depends(get_settings),
-        credentials: HTTPBasicCredentials = Depends(security)):
-    if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        credentials: HTTPBasicCredentials = Depends(authenticate)):
     try:
         students = crud.get_students(db, skip=skip, limit=limit)
         for student in students:
@@ -107,14 +107,11 @@ async def read_students(
 async def read_student(
         student_id: int,
         db: Session = Depends(get_db),
-        settings: dict = Depends(get_settings),
-        credentials: HTTPBasicCredentials = Depends(security)):
-    if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        credentials: HTTPBasicCredentials = Depends(authenticate)):
     try:
         db_student = crud.get_student(db, student_id)
         if db_student is None:
-            return HTTPException(status_code=404, detail="Student not found")
+            raise HTTPException(status_code=404, detail="Student not found")
         db_student.photo = base64.b64encode(db_student.photo).decode("utf-8")
         return db_student
     except Exception as e:
@@ -126,11 +123,8 @@ async def read_student(
 async def delete_student(
         student_id: int,
         db: Session = Depends(get_db),
-        settings: dict = Depends(get_settings),
-        credentials: HTTPBasicCredentials = Depends(security)):
+        credentials: HTTPBasicCredentials = Depends(authenticate)):
     try:
-        if credentials.username != settings['username'] or credentials.password != settings['password_hash']:
-            raise HTTPException(status_code=401, detail="Unauthorized")
         if crud.delete_student(db, student_id):
             return "Deleted successfully"
     except Exception as e:

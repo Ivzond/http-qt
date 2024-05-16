@@ -1,6 +1,6 @@
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from . import models, schemas
+from server.src.http_server import models, schemas
 import logging
 
 logger = logging.getLogger(__name__)

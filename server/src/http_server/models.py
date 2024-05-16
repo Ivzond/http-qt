@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, LargeBinary, Date
-from .database import Base
+from server.src.http_server.database import Base
 
 
 class Student(Base):
