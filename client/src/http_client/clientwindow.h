@@ -13,6 +13,7 @@
 #include <QJsonArray>
 #include <QTableWidget>
 #include <QSettings>
+#include <QLoggingCategory>
 
 class ClientWindow : public QWidget {
     Q_OBJECT
@@ -57,6 +58,7 @@ private:
     void displayStudents(const QJsonArray &students);
     void displayStudent(const QJsonObject &student);
     void loadSettings();
+    void setupLogging();
 };
 
 #endif // CLIENTWINDOW_H
