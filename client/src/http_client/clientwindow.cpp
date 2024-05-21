@@ -6,6 +6,10 @@
 #include <QImageIOHandler>
 #include <QCryptographicHash>
 #include <QFile>
+#include <QTextStream>
+
+Q_LOGGING_CATEGORY(network, "network");
+Q_LOGGING_CATEGORY(database, "database");
 
 ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
     createStudentButton = new QPushButton("Создать запись о студенте", this);
@@ -31,14 +35,40 @@ ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
 
     networkManager = new QNetworkAccessManager(this);
     loadSettings();
+    setupLogging();
 }
 
 void ClientWindow::loadSettings() {
-    QSettings settings("config.ini", QSettings::IniFormat);
+    QSettings settings("/home/vano/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
     settings.beginGroup("CLIENT");
     username = settings.value("username").toString();
+    qCInfo(network) << username;
     passwordHash = settings.value("password_hash").toString();
+    qCInfo(network) << passwordHash;
     settings.endGroup();
+}
+
+void ClientWindow::setupLogging() {
+    QSettings settings("/home/vano/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
+    settings.beginGroup("CLIENT");
+    QString logPath = settings.value("log_path").toString();
+    settings.endGroup();
+
+    if (logPath.isEmpty()) {
+        qCWarning(network) << "Log path not specified in config.ini";
+        return;
+    }
+
+    QFile logFile(logPath);
+    if (logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        QTextStream stream(&logFile);
+        stream << "Logging started\n";
+        logFile.close();
+    } else {
+        qCWarning(network) << "Failed to open log file at " << logPath;
+    }
+    qCInfo(network) << "Network logging initialized";
+    qCInfo(database) << "Database logging initialied";
 }
 
 void ClientWindow::openCreateStudentWindow() {
@@ -84,16 +114,18 @@ void ClientWindow::createStudentRequest() {
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
-    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
-    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
+    QByteArray authData = credentials.toUtf8().toBase64();
+    request.setRawHeader("Authorization", "Basic " + authData);
 
     QNetworkReply *reply = networkManager->post(request, QJsonDocument(json).toJson());
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(this, "Отлично", "Запись успешно создана");
             clearInputFields();
+            qCInfo(network) << "Запись успешно создана";
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось создать запись");
+            qCWarning(network) << "Не удалось создать запись";
         }
         reply->deleteLater();
     });
@@ -150,8 +182,8 @@ void ClientWindow::uploadPhotoRequest() {
 
     QNetworkRequest request(QUrl(QString("http://localhost:8000/students/%1/photo").arg(studentID)));
     QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
-    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
-    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
+    QByteArray authData = credentials.toUtf8().toBase64();
+    request.setRawHeader("Authorization", "Basic " + authData);
 
     QNetworkReply *reply = networkManager->post(request, multiPart);
     multiPart->setParent(reply); // delete the multiPart with the reply
@@ -161,8 +193,10 @@ void ClientWindow::uploadPhotoRequest() {
             QMessageBox::information(this, "Отлично", "Фото успешно загружено");
             uploadPhotoStudentIDLineEdit->clear();
             uploadPhotoLabel->clear();
+            qCInfo(network) << "Фото успешно загружено";
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось загрузить фото: " + reply->errorString());
+            qCWarning(network) << "Не удалось загрузить фото: " + reply->errorString();
         }
         reply->deleteLater();
     });
@@ -171,8 +205,8 @@ void ClientWindow::uploadPhotoRequest() {
 void ClientWindow::readStudentsRequest() {
     QNetworkRequest request(QUrl("http://localhost:8000/students/"));
     QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
-    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
-    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
+    QByteArray authData = credentials.toUtf8().toBase64();
+    request.setRawHeader("Authorization", "Basic " + authData);
 
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
@@ -181,8 +215,10 @@ void ClientWindow::readStudentsRequest() {
             QJsonDocument jsonDocument = QJsonDocument::fromJson(responseData);
             QJsonArray students = jsonDocument.array();
             displayStudents(students);
+            qCInfo(network) << "Записи успешно прочитаны";
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось прочитать записи");
+            qCWarning(network) << "Не удалось прочитать записи";
         }
         reply->deleteLater();
     });
@@ -252,8 +288,8 @@ void ClientWindow::readStudentRequest() {
     QString studentID = readStudentIDLineEdit->text();
     QNetworkRequest request(QUrl(QString("http://localhost:8000/students/%1").arg(studentID)));
     QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
-    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
-    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
+    QByteArray authData = credentials.toUtf8().toBase64();
+    request.setRawHeader("Authorization", "Basic " + authData);
 
     QNetworkReply *reply = networkManager->get(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
@@ -261,8 +297,10 @@ void ClientWindow::readStudentRequest() {
             QByteArray responseData = reply->readAll();
             QJsonObject student = QJsonDocument::fromJson(responseData).object();
             displayStudent(student);
+            qCInfo(network) << "Запись успешно прочитана";
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось прочитать запись");
+            qCWarning(network) << "Ошибка при чтении записи";
         }
         reply->deleteLater();
     });
@@ -318,16 +356,18 @@ void ClientWindow::deleteStudentRequest() {
     QString studentID = deleteStudentIDLineEdit->text();
     QNetworkRequest request(QUrl(QString("http://localhost:8000/students/%1").arg(studentID)));
     QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
-    QByteArray hash = QCryptographicHash::hash(credentials.toUtf8(), QCryptographicHash::Md5);
-    request.setRawHeader("Authorization", "Basic " + hash.toBase64());
+    QByteArray authData = credentials.toUtf8().toBase64();
+    request.setRawHeader("Authorization", "Basic " + authData);
 
     QNetworkReply *reply = networkManager->deleteResource(request);
     connect(reply, &QNetworkReply::finished, reply, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(this, "Отлично", "Запись успешно удалена");
             deleteStudentIDLineEdit->clear();
+            qCInfo(network) << "Запись успешно удалена";
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось удалить студента");
+            qCWarning(network) << "Не удалось удалить студента";
         }
         reply->deleteLater();
     });
