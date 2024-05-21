@@ -59,6 +59,7 @@ private:
     void displayStudent(const QJsonObject &student);
     void loadSettings();
     void setupLogging();
+    void logMessage(const QString &message);
 };
 
 #endif // CLIENTWINDOW_H

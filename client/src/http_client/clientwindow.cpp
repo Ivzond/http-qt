@@ -7,9 +7,9 @@
 #include <QCryptographicHash>
 #include <QFile>
 #include <QTextStream>
+#include <QDateTime>
 
 Q_LOGGING_CATEGORY(network, "network");
-Q_LOGGING_CATEGORY(database, "database");
 
 ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
     createStudentButton = new QPushButton("Создать запись о студенте", this);
@@ -39,17 +39,15 @@ ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
 }
 
 void ClientWindow::loadSettings() {
-    QSettings settings("/home/vano/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
+    QSettings settings("/home/user/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
     settings.beginGroup("CLIENT");
     username = settings.value("username").toString();
-    qCInfo(network) << username;
     passwordHash = settings.value("password_hash").toString();
-    qCInfo(network) << passwordHash;
     settings.endGroup();
 }
 
 void ClientWindow::setupLogging() {
-    QSettings settings("/home/vano/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
+    QSettings settings("/home/user/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
     settings.beginGroup("CLIENT");
     QString logPath = settings.value("log_path").toString();
     settings.endGroup();
@@ -60,15 +58,30 @@ void ClientWindow::setupLogging() {
     }
 
     QFile logFile(logPath);
+    if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        qCWarning(network) << "Failed to open log file at " << logPath;
+        return;
+    }
+
+    QTextStream stream(&logFile);
+    stream << "Logging started at " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "\n";
+    logFile.close();
+
+    qCInfo(network) << "Network logging initialized";
+}
+
+void ClientWindow::logMessage(const QString &message) {
+    QSettings settings("/home/user/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
+    settings.beginGroup("CLIENT");
+    QString logPath = settings.value("log_path").toString();
+    settings.endGroup();
+
+    QFile logFile(logPath);
     if (logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
         QTextStream stream(&logFile);
-        stream << "Logging started\n";
+        stream << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " - " << message << "\n";
         logFile.close();
-    } else {
-        qCWarning(network) << "Failed to open log file at " << logPath;
     }
-    qCInfo(network) << "Network logging initialized";
-    qCInfo(database) << "Database logging initialied";
 }
 
 void ClientWindow::openCreateStudentWindow() {
@@ -103,7 +116,6 @@ void ClientWindow::createStudentRequest() {
     QString grade = createStudentGradeLineEdit->text();
     QString group = createStudentGroupLineEdit->text();
 
-    // Send request to create student
     QJsonObject json;
     json["name"] = name;
     json["date_of_birth"] = dob;
@@ -122,10 +134,10 @@ void ClientWindow::createStudentRequest() {
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(this, "Отлично", "Запись успешно создана");
             clearInputFields();
-            qCInfo(network) << "Запись успешно создана";
+            logMessage("Запись успешно создана");
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось создать запись");
-            qCWarning(network) << "Не удалось создать запись";
+            logMessage("Не удалось создать запись: " + reply->errorString());
         }
         reply->deleteLater();
     });
@@ -193,10 +205,10 @@ void ClientWindow::uploadPhotoRequest() {
             QMessageBox::information(this, "Отлично", "Фото успешно загружено");
             uploadPhotoStudentIDLineEdit->clear();
             uploadPhotoLabel->clear();
-            qCInfo(network) << "Фото успешно загружено";
+            logMessage("Фото успешно загружено");
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось загрузить фото: " + reply->errorString());
-            qCWarning(network) << "Не удалось загрузить фото: " + reply->errorString();
+            logMessage("Не удалось загрузить фото: " + reply->errorString());
         }
         reply->deleteLater();
     });
@@ -215,10 +227,10 @@ void ClientWindow::readStudentsRequest() {
             QJsonDocument jsonDocument = QJsonDocument::fromJson(responseData);
             QJsonArray students = jsonDocument.array();
             displayStudents(students);
-            qCInfo(network) << "Записи успешно прочитаны";
+            logMessage("Записи успешно прочитаны");
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось прочитать записи");
-            qCWarning(network) << "Не удалось прочитать записи";
+            logMessage("Не удалось прочитать записи: " + reply->errorString());
         }
         reply->deleteLater();
     });
@@ -297,10 +309,10 @@ void ClientWindow::readStudentRequest() {
             QByteArray responseData = reply->readAll();
             QJsonObject student = QJsonDocument::fromJson(responseData).object();
             displayStudent(student);
-            qCInfo(network) << "Запись успешно прочитана";
+            logMessage("Запись успешно прочитана: " + student["name"].toString());
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось прочитать запись");
-            qCWarning(network) << "Ошибка при чтении записи";
+            logMessage("Не удалось прочитать запись: " + reply->errorString());
         }
         reply->deleteLater();
     });
@@ -364,10 +376,10 @@ void ClientWindow::deleteStudentRequest() {
         if (reply->error() == QNetworkReply::NoError) {
             QMessageBox::information(this, "Отлично", "Запись успешно удалена");
             deleteStudentIDLineEdit->clear();
-            qCInfo(network) << "Запись успешно удалена";
+            logMessage("Запись успешно удалена");
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось удалить студента");
-            qCWarning(network) << "Не удалось удалить студента";
+            logMessage("Ошибка при удалении записи");
         }
         reply->deleteLater();
     });
