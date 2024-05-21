@@ -1,0 +1,23 @@
+--http-qt
+  --client
+    --src
+      --http_client
+        clientwindow.cpp
+        clientwindow.h
+        main.cpp
+        qt_client.pro
+        qt_client.pro.user
+  --server
+    --src
+      --http_server
+        __init__.py
+        config.ini
+        crud.py
+        database.py
+        logging.conf
+        main.py
+        models.py
+        schemas.py
+    --test
+      test_main.py
+    logfile.log
