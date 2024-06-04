@@ -25,7 +25,7 @@ password_hash = config.get('SETTINGS', 'password_hash')
 log_level = config.get('SETTINGS', 'log_level')
 log_path = config.get('SETTINGS', 'log_path')
 
-fileConfig('server/src/http_server/logging.conf', defaults={'log_path': log_path})
+fileConfig(logging_config_file_path, defaults={'log_path': log_path})
 logger = logging.getLogger('app')
 
 

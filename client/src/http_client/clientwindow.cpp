@@ -35,39 +35,42 @@ ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
 
     networkManager = new QNetworkAccessManager(this);
     loadSettings();
-    setupLogging();
 }
 
 void ClientWindow::loadSettings() {
-    QSettings settings("/home/user/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
-    settings.beginGroup("CLIENT");
-    username = settings.value("username").toString();
-    passwordHash = settings.value("password_hash").toString();
-    settings.endGroup();
-}
+    QString selectedFilePath = QFileDialog::getOpenFileName(this,
+                                                            "Выбрать конфигурационный файл",
+                                                            "",
+                                                            "Config Files (*.ini);;All Files (*.*)");
 
-void ClientWindow::setupLogging() {
-    QSettings settings("/home/user/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
-    settings.beginGroup("CLIENT");
-    QString logPath = settings.value("log_path").toString();
-    settings.endGroup();
+    if (!selectedFilePath.isEmpty()) {
+        QSettings settings(selectedFilePath, QSettings::IniFormat);
+        settings.beginGroup("CLIENT");
+        username = settings.value("username").toString();
+        passwordHash = settings.value("password_hash").toString();
+        QString logPath = settings.value("log_path").toString();
+        settings.endGroup();
 
-    if (logPath.isEmpty()) {
-        qCWarning(network) << "Log path not specified in config.ini";
+        if (logPath.isEmpty()) {
+            qCWarning(network) << "Log path not specified in config.ini";
+            return;
+        }
+
+        QFile logFile(logPath);
+        if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+            qCWarning(network) << "Failed to open log file at " << logPath;
+            return;
+        }
+
+        QTextStream stream(&logFile);
+        stream << "Logging started at " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "\n";
+        logFile.close();
+
+        qCInfo(network) << "Network logging initialized";
+    } else {
+        qWarning("No configuration file selected");
         return;
     }
-
-    QFile logFile(logPath);
-    if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        qCWarning(network) << "Failed to open log file at " << logPath;
-        return;
-    }
-
-    QTextStream stream(&logFile);
-    stream << "Logging started at " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "\n";
-    logFile.close();
-
-    qCInfo(network) << "Network logging initialized";
 }
 
 void ClientWindow::logMessage(const QString &message) {

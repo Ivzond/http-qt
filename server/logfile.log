@@ -1,0 +1,11 @@
+2024-06-04 18:24:30 - app - INFO - Students retrieved successfully: count=4
+2024-06-04 18:28:07 - app - INFO - Students retrieved successfully: count=4
+2024-06-04 18:28:25 - app - INFO - Student created successfully: Иванов
+2024-06-04 18:28:28 - app - ERROR - Error in read_students endpoint: a bytes-like object is required, not 'NoneType'
+Traceback (most recent call last):
+  File "/home/user/PycharmProjects/http-qt/server/src/http_server/main.py", line 106, in read_students
+    student.photo = base64.b64encode(student.photo).decode("utf-8")
+  File "/usr/lib/python3.10/base64.py", line 58, in b64encode
+    encoded = binascii.b2a_base64(s, newline=False)
+TypeError: a bytes-like object is required, not 'NoneType'
+2024-06-04 19:06:14 - app - INFO - Student created successfully: asdasmdk

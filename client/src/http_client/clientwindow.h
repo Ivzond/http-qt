@@ -58,7 +58,6 @@ private:
     void displayStudents(const QJsonArray &students);
     void displayStudent(const QJsonObject &student);
     void loadSettings();
-    void setupLogging();
     void logMessage(const QString &message);
 };
 

@@ -1,0 +1,6 @@
+Logging started at 2024-06-04 18:28:03
+2024-06-04 18:28:09 - Записи успешно прочитаны
+2024-06-04 18:28:26 - Запись успешно создана
+2024-06-04 18:28:29 - Не удалось прочитать записи: Error transferring http://localhost:8000/students/ - server replied: Internal Server Error
+Logging started at 2024-06-04 19:05:33
+2024-06-04 19:06:15 - Запись успешно создана
