@@ -9,3 +9,81 @@ Traceback (most recent call last):
     encoded = binascii.b2a_base64(s, newline=False)
 TypeError: a bytes-like object is required, not 'NoneType'
 2024-06-04 19:06:14 - app - INFO - Student created successfully: asdasmdk
+2024-06-06 20:54:30 - app - ERROR - Error in read_students endpoint: a bytes-like object is required, not 'NoneType'
+Traceback (most recent call last):
+  File "/home/user/PycharmProjects/http-qt/server/src/http_server/main.py", line 106, in read_students
+    student.photo = base64.b64encode(student.photo).decode("utf-8")
+  File "/usr/lib/python3.10/base64.py", line 58, in b64encode
+    encoded = binascii.b2a_base64(s, newline=False)
+TypeError: a bytes-like object is required, not 'NoneType'
+2024-06-06 20:56:25 - app - INFO - Student deleted successfully: ID=26
+2024-06-06 20:56:28 - app - INFO - Student deleted successfully: ID=27
+2024-06-06 20:56:31 - app - ERROR - Internal server error: 1 validation errors:
+  {'type': 'string_type', 'loc': ('response',), 'msg': 'Input should be a valid string', 'input': None, 'url': 'https://errors.pydantic.dev/2.5/v/string_type'}
+Traceback (most recent call last):
+  File "/home/user/.local/lib/python3.10/site-packages/anyio/streams/memory.py", line 97, in receive
+    return self.receive_nowait()
+  File "/home/user/.local/lib/python3.10/site-packages/anyio/streams/memory.py", line 92, in receive_nowait
+    raise WouldBlock
+anyio.WouldBlock
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/middleware/base.py", line 159, in call_next
+    message = await recv_stream.receive()
+  File "/home/user/.local/lib/python3.10/site-packages/anyio/streams/memory.py", line 112, in receive
+    raise EndOfStream
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/PycharmProjects/http-qt/server/src/http_server/main.py", line 43, in db_session_middleware
+    response = await call_next(request)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/middleware/base.py", line 165, in call_next
+    raise app_exc
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/middleware/base.py", line 151, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/routing.py", line 762, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/routing.py", line 782, in app
+    await route.handle(scope, receive, send)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/user/.local/lib/python3.10/site-packages/starlette/routing.py", line 72, in app
+    response = await func(request)
+  File "/home/user/.local/lib/python3.10/site-packages/fastapi/routing.py", line 315, in app
+    content = await serialize_response(
+  File "/home/user/.local/lib/python3.10/site-packages/fastapi/routing.py", line 155, in serialize_response
+    raise ResponseValidationError(
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'string_type', 'loc': ('response',), 'msg': 'Input should be a valid string', 'input': None, 'url': 'https://errors.pydantic.dev/2.5/v/string_type'}
+
+2024-06-06 20:56:36 - app - INFO - Students retrieved successfully: count=4
+2024-06-06 20:57:09 - app - INFO - Student retrieved successfully: Чуйкин П.А.
+2024-06-06 20:57:12 - app - INFO - Students retrieved successfully: count=4
+2024-06-06 21:03:59 - app - INFO - Students retrieved successfully: count=4
+2024-06-06 21:12:27 - app - INFO - Student created successfully: Иванов И.И.
+2024-06-06 21:12:30 - app - ERROR - Error in read_students endpoint: a bytes-like object is required, not 'NoneType'
+Traceback (most recent call last):
+  File "/home/user/PycharmProjects/http-qt/server/src/http_server/main.py", line 106, in read_students
+    student.photo = base64.b64encode(student.photo).decode("utf-8")
+  File "/usr/lib/python3.10/base64.py", line 58, in b64encode
+    encoded = binascii.b2a_base64(s, newline=False)
+TypeError: a bytes-like object is required, not 'NoneType'
+2024-06-06 21:12:46 - app - INFO - Photo uploaded successfully for student ID: 28
+2024-06-06 21:12:50 - app - INFO - Students retrieved successfully: count=5
+2024-06-06 21:13:04 - app - INFO - Student retrieved successfully: Иванов И.И.

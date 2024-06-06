@@ -93,15 +93,19 @@ void ClientWindow::openCreateStudentWindow() {
 
     createStudentNameLineEdit = new QLineEdit(dialog);
     createStudentNameLineEdit->setPlaceholderText("Иванов И.И.");
-    createStudentDOBLineEdit = new QLineEdit(dialog);
-    createStudentDOBLineEdit->setPlaceholderText("ГГГГ-ММ-ДД");
+
+    createStudentDOBEdit = new QDateEdit(dialog);
+    createStudentDOBEdit->setDisplayFormat("ГГГГ-ММ-ДД");
+    createStudentDOBEdit->setCalendarPopup(true);
+    createStudentDOBEdit->setDate(QDate::currentDate());
+
     createStudentGradeLineEdit = new QLineEdit(dialog);
     createStudentGradeLineEdit->setPlaceholderText("Номер курса");
     createStudentGroupLineEdit = new QLineEdit(dialog);
     createStudentGroupLineEdit->setPlaceholderText("Номер группы");
 
     formLayout->addRow("Имя:", createStudentNameLineEdit);
-    formLayout->addRow("Дата рождения:", createStudentDOBLineEdit);
+    formLayout->addRow("Дата рождения:", createStudentDOBEdit);
     formLayout->addRow("Номер курса:", createStudentGradeLineEdit);
     formLayout->addRow("Номер группы:", createStudentGroupLineEdit);
 
@@ -115,7 +119,7 @@ void ClientWindow::openCreateStudentWindow() {
 
 void ClientWindow::createStudentRequest() {
     QString name = createStudentNameLineEdit->text();
-    QString dob = createStudentDOBLineEdit->text();
+    QString dob = createStudentDOBEdit->date().toString("yyyy-MM-dd");
     QString grade = createStudentGradeLineEdit->text();
     QString group = createStudentGroupLineEdit->text();
 
@@ -217,6 +221,27 @@ void ClientWindow::uploadPhotoRequest() {
     });
 }
 
+void ClientWindow::openReadStudentsWindow() {
+    QDialog *dialog = new QDialog(this);
+    QVBoxLayout *layout = new QVBoxLayout(dialog);
+
+    readStudentsFilterNameLineEdit = new QLineEdit(dialog);
+    readStudentsFilterNameLineEdit->setPlaceholderText("Фильтр по имени");
+
+    readStudentsFilterGroupLineEdit = new QLineEdit(dialog);
+    readStudentsFilterGroupLineEdit->setPlaceholderText("Фильтр по номеру группы");
+
+    QPushButton *filterButton = new QPushButton("Применить фильтр", dialog);
+    connect(filterButton, &QPushButton::clicked, this, &ClientWindow::readStudentRequest);
+
+    layout->addWidget(readStudentsFilterNameLineEdit);
+    layout->addWidget(readStudentsFilterGroupLineEdit);
+    layout->addWidget(filterButton);
+
+    dialog->setLayout(layout);
+    dialog->exec();
+}
+
 void ClientWindow::readStudentsRequest() {
     QNetworkRequest request(QUrl("http://localhost:8000/students/"));
     QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
@@ -244,12 +269,26 @@ void ClientWindow::displayStudents(const QJsonArray &students) {
     QVBoxLayout *layout = new QVBoxLayout(dialog);
 
     QTableWidget *tableWidget = new QTableWidget(dialog);
-    tableWidget->setRowCount(students.size());
+    tableWidget->setRowCount(0);
     tableWidget->setColumnCount(6);
     tableWidget->setHorizontalHeaderLabels({"ID", "Имя", "Фото", "Дата рождения", "Курс", "Номер группы"});
 
+    QString filterName = readStudentsFilterNameLineEdit->text().trimmed();
+    QString filterGroup = readStudentsFilterGroupLineEdit->text().trimmed();
+
     for (int i = 0; i < students.size(); i++) {
         QJsonObject student = students.at(i).toObject();
+        QString studentName = student["name"].toString();
+        QString studentGroup = student["student_group"].toString();
+
+        if ((!filterName.isEmpty() && !studentName.contains(filterName, Qt::CaseInsensitive)) ||
+                    (!filterGroup.isEmpty() && !studentGroup.contains(filterGroup, Qt::CaseInsensitive))) {
+            continue;
+        }
+
+        int row = tableWidget->rowCount();
+        tableWidget->insertRow(row);
+
         QTableWidgetItem *idItem = new QTableWidgetItem(QString::number(student["id"].toInt()));
         QTableWidgetItem *nameItem = new QTableWidgetItem(student["name"].toString());
         QTableWidgetItem *dobItem = new QTableWidgetItem(student["date_of_birth"].toString());
@@ -264,12 +303,12 @@ void ClientWindow::displayStudents(const QJsonArray &students) {
         QLabel *photoLabel = new QLabel;
         photoLabel->setPixmap(photoPixmap.scaled(100, 100, Qt::KeepAspectRatio));
 
-        tableWidget->setItem(i, 0, idItem);
-        tableWidget->setItem(i, 1, nameItem);
-        tableWidget->setCellWidget(i, 2, photoLabel);
-        tableWidget->setItem(i, 3, dobItem);
-        tableWidget->setItem(i, 4, gradeItem);
-        tableWidget->setItem(i, 5, groupItem);
+        tableWidget->setItem(row, 0, idItem);
+        tableWidget->setItem(row, 1, nameItem);
+        tableWidget->setCellWidget(row, 2, photoLabel);
+        tableWidget->setItem(row, 3, dobItem);
+        tableWidget->setItem(row, 4, gradeItem);
+        tableWidget->setItem(row, 5, groupItem);
     }
     tableWidget->resizeColumnsToContents();
     tableWidget->resizeRowsToContents();
@@ -390,7 +429,7 @@ void ClientWindow::deleteStudentRequest() {
 
 void ClientWindow::clearInputFields() {
     createStudentNameLineEdit->clear();
-    createStudentDOBLineEdit->clear();
+    createStudentDOBEdit->clear();
     createStudentGradeLineEdit->clear();
     createStudentGroupLineEdit->clear();
 }
