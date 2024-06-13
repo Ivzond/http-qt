@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDateTime>
+#include <QUrlQuery>
 
 Q_LOGGING_CATEGORY(network, "network");
 
@@ -20,7 +21,7 @@ ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
 
     connect(createStudentButton, &QPushButton::clicked, this, &ClientWindow::openCreateStudentWindow);
     connect(uploadPhotoButton, &QPushButton::clicked, this, &ClientWindow::openUploadPhotoWindow);
-    connect(readStudentsButton, &QPushButton::clicked, this, &ClientWindow::readStudentsRequest);
+    connect(readStudentsButton, &QPushButton::clicked, this, &ClientWindow::openReadStudentsWindow);
     connect(readStudentButton, &QPushButton::clicked, this, &ClientWindow::openReadStudentWindow);
     connect(deleteStudentButton, &QPushButton::clicked, this, &ClientWindow::openDeleteStudentWindow);
 
@@ -232,7 +233,7 @@ void ClientWindow::openReadStudentsWindow() {
     readStudentsFilterGroupLineEdit->setPlaceholderText("Фильтр по номеру группы");
 
     QPushButton *filterButton = new QPushButton("Применить фильтр", dialog);
-    connect(filterButton, &QPushButton::clicked, this, &ClientWindow::readStudentRequest);
+    connect(filterButton, &QPushButton::clicked, this, &ClientWindow::readStudentsRequest);
 
     layout->addWidget(readStudentsFilterNameLineEdit);
     layout->addWidget(readStudentsFilterGroupLineEdit);
@@ -243,7 +244,8 @@ void ClientWindow::openReadStudentsWindow() {
 }
 
 void ClientWindow::readStudentsRequest() {
-    QNetworkRequest request(QUrl("http://localhost:8000/students/"));
+    QNetworkRequest request(QUrl(QString("http://localhost:8000/students/")));
+
     QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
     QByteArray authData = credentials.toUtf8().toBase64();
     request.setRawHeader("Authorization", "Basic " + authData);
@@ -268,21 +270,21 @@ void ClientWindow::displayStudents(const QJsonArray &students) {
     QDialog *dialog = new QDialog(this);
     QVBoxLayout *layout = new QVBoxLayout(dialog);
 
+    QString filterName = readStudentsFilterNameLineEdit->text();
+    QString filterGroup = readStudentsFilterGroupLineEdit->text();
+
     QTableWidget *tableWidget = new QTableWidget(dialog);
     tableWidget->setRowCount(0);
     tableWidget->setColumnCount(6);
     tableWidget->setHorizontalHeaderLabels({"ID", "Имя", "Фото", "Дата рождения", "Курс", "Номер группы"});
-
-    QString filterName = readStudentsFilterNameLineEdit->text().trimmed();
-    QString filterGroup = readStudentsFilterGroupLineEdit->text().trimmed();
 
     for (int i = 0; i < students.size(); i++) {
         QJsonObject student = students.at(i).toObject();
         QString studentName = student["name"].toString();
         QString studentGroup = student["student_group"].toString();
 
-        if ((!filterName.isEmpty() && !studentName.contains(filterName, Qt::CaseInsensitive)) ||
-                    (!filterGroup.isEmpty() && !studentGroup.contains(filterGroup, Qt::CaseInsensitive))) {
+        if ((!filterName.isEmpty() && studentName != filterName) ||
+                    (!filterGroup.isEmpty() && studentGroup != filterGroup)) {
             continue;
         }
 
@@ -296,12 +298,12 @@ void ClientWindow::displayStudents(const QJsonArray &students) {
         QTableWidgetItem *groupItem = new QTableWidgetItem(student["student_group"].toString());
 
         QByteArray photoData = QByteArray::fromBase64(student["photo"].toString().toUtf8());
-
-        QPixmap photoPixmap;
-        photoPixmap.loadFromData(photoData);
+        QImage image;
+        image.loadFromData(photoData);
+        image = image.convertToFormat(QImage::Format_RGB888);
 
         QLabel *photoLabel = new QLabel;
-        photoLabel->setPixmap(photoPixmap.scaled(100, 100, Qt::KeepAspectRatio));
+        photoLabel->setPixmap(QPixmap::fromImage(image).scaled(100, 100, Qt::KeepAspectRatio));
 
         tableWidget->setItem(row, 0, idItem);
         tableWidget->setItem(row, 1, nameItem);
@@ -319,6 +321,34 @@ void ClientWindow::displayStudents(const QJsonArray &students) {
     layout->addWidget(tableWidget);
     dialog->setLayout(layout);
     dialog->exec();
+    /*
+    QDialog *dialog = new QDialog(this);
+    QVBoxLayout *layout = new QVBoxLayout(dialog);
+
+    QLabel *idLabel = new QLabel("ID: " + QString::number(student["id"].toInt()), dialog);
+    QLabel *nameLabel = new QLabel("Имя: " + student["name"].toString(), dialog);
+    QLabel *dobLabel = new QLabel("Дата рождения: " + student["date_of_birth"].toString(), dialog);
+    QLabel *gradeLabel = new QLabel("Курс: " + QString::number(student["grade"].toInt()), dialog);
+    QLabel *groupLabel = new QLabel("Номер группы: " + student["student_group"].toString(), dialog);
+
+    QByteArray photoData = QByteArray::fromBase64(student["photo"].toString().toUtf8());
+    QImage image;
+    image.loadFromData(photoData);
+    image = image.convertToFormat(QImage::Format_RGB888);
+
+    QLabel *photoLabel = new QLabel(dialog);
+    photoLabel->setPixmap(QPixmap::fromImage(image).scaled(150, 150, Qt::KeepAspectRatio));
+
+    layout->addWidget(idLabel);
+    layout->addWidget(nameLabel);
+    layout->addWidget(photoLabel);
+    layout->addWidget(dobLabel);
+    layout->addWidget(gradeLabel);
+    layout->addWidget(groupLabel);
+
+    dialog->setLayout(layout);
+    dialog->exec();
+    */
 }
 
 void ClientWindow::openReadStudentWindow() {
