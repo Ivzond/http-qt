@@ -45,10 +45,10 @@ private:
     QLineEdit *createStudentGradeLineEdit;
     QLineEdit *createStudentGroupLineEdit;
     QLineEdit *uploadPhotoStudentIDLineEdit;
-    QLineEdit *readStudentIDLineEdit;
-    QLineEdit *deleteStudentIDLineEdit;
     QLineEdit *readStudentsFilterNameLineEdit;
     QLineEdit *readStudentsFilterGroupLineEdit;
+    QLineEdit *readStudentIDLineEdit;
+    QLineEdit *deleteStudentIDLineEdit;
 
     QPushButton *uploadPhotoSelectButton;
     QLabel *uploadPhotoLabel;
