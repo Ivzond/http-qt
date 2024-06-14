@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QDateEdit>
 #include <QLabel>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -25,6 +26,7 @@ private slots:
     void createStudentRequest();
     void openUploadPhotoWindow();
     void uploadPhotoRequest();
+    void openReadStudentsWindow();
     void readStudentsRequest();
     void openReadStudentWindow();
     void readStudentRequest();
@@ -39,10 +41,12 @@ private:
     QPushButton *deleteStudentButton;
 
     QLineEdit *createStudentNameLineEdit;
-    QLineEdit *createStudentDOBLineEdit;
+    QDateEdit *createStudentDOBEdit;
     QLineEdit *createStudentGradeLineEdit;
     QLineEdit *createStudentGroupLineEdit;
     QLineEdit *uploadPhotoStudentIDLineEdit;
+    QLineEdit *readStudentsFilterNameLineEdit;
+    QLineEdit *readStudentsFilterGroupLineEdit;
     QLineEdit *readStudentIDLineEdit;
     QLineEdit *deleteStudentIDLineEdit;
 
@@ -58,7 +62,6 @@ private:
     void displayStudents(const QJsonArray &students);
     void displayStudent(const QJsonObject &student);
     void loadSettings();
-    void setupLogging();
     void logMessage(const QString &message);
 };
 

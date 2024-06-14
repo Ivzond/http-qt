@@ -4,7 +4,6 @@
 #include <QJsonObject>
 #include <QHttpMultiPart>
 #include <QImageIOHandler>
-#include <QCryptographicHash>
 #include <QFile>
 #include <QTextStream>
 #include <QDateTime>
@@ -20,7 +19,7 @@ ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
 
     connect(createStudentButton, &QPushButton::clicked, this, &ClientWindow::openCreateStudentWindow);
     connect(uploadPhotoButton, &QPushButton::clicked, this, &ClientWindow::openUploadPhotoWindow);
-    connect(readStudentsButton, &QPushButton::clicked, this, &ClientWindow::readStudentsRequest);
+    connect(readStudentsButton, &QPushButton::clicked, this, &ClientWindow::openReadStudentsWindow);
     connect(readStudentButton, &QPushButton::clicked, this, &ClientWindow::openReadStudentWindow);
     connect(deleteStudentButton, &QPushButton::clicked, this, &ClientWindow::openDeleteStudentWindow);
 
@@ -35,39 +34,39 @@ ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
 
     networkManager = new QNetworkAccessManager(this);
     loadSettings();
-    setupLogging();
 }
 
 void ClientWindow::loadSettings() {
-    QSettings settings("/home/user/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
-    settings.beginGroup("CLIENT");
-    username = settings.value("username").toString();
-    passwordHash = settings.value("password_hash").toString();
-    settings.endGroup();
-}
+    QString selectedFilePath = QFileDialog::getOpenFileName(this,
+    "Выбрать конфигурационный файл", "", "Config files (*.ini);;All files (*.*)");
+    if (!selectedFilePath.isEmpty()) {
+        QSettings settings(selectedFilePath, QSettings::IniFormat);
+        settings.beginGroup("CLIENT");
+        username = settings.value("username").toString();
+        passwordHash = settings.value("password_hash").toString();
+        QString logPath = settings.value("log_path").toString();
+        settings.endGroup();
 
-void ClientWindow::setupLogging() {
-    QSettings settings("/home/user/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
-    settings.beginGroup("CLIENT");
-    QString logPath = settings.value("log_path").toString();
-    settings.endGroup();
+        if (logPath.isEmpty()) {
+            qCWarning(network) << "Log path not specified in config.ini";
+            return;
+        }
 
-    if (logPath.isEmpty()) {
-        qCWarning(network) << "Log path not specified in config.ini";
+        QFile logFile(logPath);
+        if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+            qCWarning(network) << "Failed to open log file at " << logPath;
+            return;
+        }
+
+        QTextStream stream(&logFile);
+        stream << "Logging started at " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "\n";
+        logFile.close();
+
+        qCInfo(network) << "Network logging initialized";
+    } else {
+        qWarning("No configuration file Selected");
         return;
     }
-
-    QFile logFile(logPath);
-    if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        qCWarning(network) << "Failed to open log file at " << logPath;
-        return;
-    }
-
-    QTextStream stream(&logFile);
-    stream << "Logging started at " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "\n";
-    logFile.close();
-
-    qCInfo(network) << "Network logging initialized";
 }
 
 void ClientWindow::logMessage(const QString &message) {
@@ -90,15 +89,19 @@ void ClientWindow::openCreateStudentWindow() {
 
     createStudentNameLineEdit = new QLineEdit(dialog);
     createStudentNameLineEdit->setPlaceholderText("Иванов И.И.");
-    createStudentDOBLineEdit = new QLineEdit(dialog);
-    createStudentDOBLineEdit->setPlaceholderText("ГГГГ-ММ-ДД");
+
+    createStudentDOBEdit = new QDateEdit(dialog);
+    createStudentDOBEdit->setDisplayFormat("ГГГГ-ММ-ДД");
+    createStudentDOBEdit->setCalendarPopup(true);
+    createStudentDOBEdit->setDate(QDate::currentDate());
+    
     createStudentGradeLineEdit = new QLineEdit(dialog);
     createStudentGradeLineEdit->setPlaceholderText("Номер курса");
     createStudentGroupLineEdit = new QLineEdit(dialog);
     createStudentGroupLineEdit->setPlaceholderText("Номер группы");
 
     formLayout->addRow("Имя:", createStudentNameLineEdit);
-    formLayout->addRow("Дата рождения:", createStudentDOBLineEdit);
+    formLayout->addRow("Дата рождения:", createStudentDOBEdit);
     formLayout->addRow("Номер курса:", createStudentGradeLineEdit);
     formLayout->addRow("Номер группы:", createStudentGroupLineEdit);
 
@@ -112,7 +115,7 @@ void ClientWindow::openCreateStudentWindow() {
 
 void ClientWindow::createStudentRequest() {
     QString name = createStudentNameLineEdit->text();
-    QString dob = createStudentDOBLineEdit->text();
+    QString dob = createStudentDOBEdit->date().toString("ГГГГ-ММ-ДД");
     QString grade = createStudentGradeLineEdit->text();
     QString group = createStudentGroupLineEdit->text();
 
@@ -214,8 +217,30 @@ void ClientWindow::uploadPhotoRequest() {
     });
 }
 
+void ClientWindow::openReadStudentsWindow() {
+    QDialog *dialog = new QDialog(this);
+    QVBoxLayout *layout = new QVBoxLayout(dialog);
+
+    readStudentsFilterNameLineEdit = new QLineEdit(dialog);
+    readStudentsFilterNameLineEdit->setPlaceholderText("Фильтр по имени студента");
+
+    readStudentsFilterGroupLineEdit = new QLineEdit(dialog);
+    readStudentsFilterGroupLineEdit->setPlaceholderText("Фильтр по номеру группы");
+
+    QPushButton *filterButton = new QPushButton("Применить фильтр", dialog);
+    connect(filterButton, &QPushButton::clicked, this, &ClientWindow::readStudentsRequest);
+
+    layout->addWidget(readStudentsFilterNameLineEdit);
+    layout->addWidget(readStudentsFilterGroupLineEdit);
+    layout->addWidget(filterButton);
+
+    dialog->setLayout(layout);
+    dialog->exec();
+}
+
 void ClientWindow::readStudentsRequest() {
     QNetworkRequest request(QUrl("http://localhost:8000/students/"));
+
     QString credentials = QString("%1:%2").arg(username).arg(passwordHash);
     QByteArray authData = credentials.toUtf8().toBase64();
     request.setRawHeader("Authorization", "Basic " + authData);
@@ -227,6 +252,8 @@ void ClientWindow::readStudentsRequest() {
             QJsonDocument jsonDocument = QJsonDocument::fromJson(responseData);
             QJsonArray students = jsonDocument.array();
             displayStudents(students);
+            readStudentsFilterNameLineEdit->clear();
+            readStudentsFilterGroupLineEdit->clear();
             logMessage("Записи успешно прочитаны");
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось прочитать записи");
@@ -240,13 +267,26 @@ void ClientWindow::displayStudents(const QJsonArray &students) {
     QDialog *dialog = new QDialog(this);
     QVBoxLayout *layout = new QVBoxLayout(dialog);
 
+    QString filterName = readStudentsFilterNameLineEdit->text();
+    QString filterGroup = readStudentsFilterGroupLineEdit->text();
+
     QTableWidget *tableWidget = new QTableWidget(dialog);
-    tableWidget->setRowCount(students.size());
+    tableWidget->setRowCount(0);
     tableWidget->setColumnCount(6);
     tableWidget->setHorizontalHeaderLabels({"ID", "Имя", "Фото", "Дата рождения", "Курс", "Номер группы"});
 
     for (int i = 0; i < students.size(); i++) {
         QJsonObject student = students.at(i).toObject();
+        QString studentName = student["name"].toString();
+        QString studentGroup = student["student_group"].toString();
+
+        if ((!filterName.isEmpty() && studentName != filterName) || (!filterGroup.isEmpty() && studentGroup != filterGroup)) {
+            continue;
+        }
+
+        int row = tableWidget->rowCount();
+        tableWidget->insertRow(row);
+
         QTableWidgetItem *idItem = new QTableWidgetItem(QString::number(student["id"].toInt()));
         QTableWidgetItem *nameItem = new QTableWidgetItem(student["name"].toString());
         QTableWidgetItem *dobItem = new QTableWidgetItem(student["date_of_birth"].toString());
@@ -254,19 +294,19 @@ void ClientWindow::displayStudents(const QJsonArray &students) {
         QTableWidgetItem *groupItem = new QTableWidgetItem(student["student_group"].toString());
 
         QByteArray photoData = QByteArray::fromBase64(student["photo"].toString().toUtf8());
-
-        QPixmap photoPixmap;
-        photoPixmap.loadFromData(photoData);
+        QImage image;
+        image.loadFromData(photoData);
+        image = image.convertToFormat(QImage::Format_RGB888);
 
         QLabel *photoLabel = new QLabel;
-        photoLabel->setPixmap(photoPixmap.scaled(100, 100, Qt::KeepAspectRatio));
+        photoLabel->setPixmap(QPixmap::fromImage(image).scaled(100, 100, Qt::KeepAspectRatio));
 
-        tableWidget->setItem(i, 0, idItem);
-        tableWidget->setItem(i, 1, nameItem);
-        tableWidget->setCellWidget(i, 2, photoLabel);
-        tableWidget->setItem(i, 3, dobItem);
-        tableWidget->setItem(i, 4, gradeItem);
-        tableWidget->setItem(i, 5, groupItem);
+        tableWidget->setItem(row, 0, idItem);
+        tableWidget->setItem(row, 1, nameItem);
+        tableWidget->setCellWidget(row, 2, photoLabel);
+        tableWidget->setItem(row, 3, dobItem);
+        tableWidget->setItem(row, 4, gradeItem);
+        tableWidget->setItem(row, 5, groupItem);
     }
     tableWidget->resizeColumnsToContents();
     tableWidget->resizeRowsToContents();
@@ -309,6 +349,7 @@ void ClientWindow::readStudentRequest() {
             QByteArray responseData = reply->readAll();
             QJsonObject student = QJsonDocument::fromJson(responseData).object();
             displayStudent(student);
+            readStudentIDLineEdit->clear();
             logMessage("Запись успешно прочитана: " + student["name"].toString());
         } else {
             QMessageBox::warning(this, "Ошибка", "Не удалось прочитать запись");
@@ -387,7 +428,7 @@ void ClientWindow::deleteStudentRequest() {
 
 void ClientWindow::clearInputFields() {
     createStudentNameLineEdit->clear();
-    createStudentDOBLineEdit->clear();
+    createStudentDOBEdit->clear();
     createStudentGradeLineEdit->clear();
     createStudentGroupLineEdit->clear();
 }
