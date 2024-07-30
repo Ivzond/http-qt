@@ -37,10 +37,10 @@ ClientWindow::ClientWindow(QWidget *parent) : QWidget(parent) {
 }
 
 void ClientWindow::loadSettings() {
-    QString selectedFilePath = QFileDialog::getOpenFileName(this,
+    configFilePath = QFileDialog::getOpenFileName(this,
     "Выбрать конфигурационный файл", "", "Config files (*.ini);;All files (*.*)");
-    if (!selectedFilePath.isEmpty()) {
-        QSettings settings(selectedFilePath, QSettings::IniFormat);
+    if (!configFilePath.isEmpty()) {
+        QSettings settings(configFilePath, QSettings::IniFormat);
         settings.beginGroup("CLIENT");
         username = settings.value("username").toString();
         passwordHash = settings.value("password_hash").toString();
@@ -70,7 +70,7 @@ void ClientWindow::loadSettings() {
 }
 
 void ClientWindow::logMessage(const QString &message) {
-    QSettings settings("/home/user/PycharmProjects/http-qt/client/src/http_client/config.ini", QSettings::IniFormat);
+    QSettings settings(configFilePath, QSettings::IniFormat);
     settings.beginGroup("CLIENT");
     QString logPath = settings.value("log_path").toString();
     settings.endGroup();
@@ -94,7 +94,7 @@ void ClientWindow::openCreateStudentWindow() {
     createStudentDOBEdit->setDisplayFormat("ГГГГ-ММ-ДД");
     createStudentDOBEdit->setCalendarPopup(true);
     createStudentDOBEdit->setDate(QDate::currentDate());
-    
+
     createStudentGradeLineEdit = new QLineEdit(dialog);
     createStudentGradeLineEdit->setPlaceholderText("Номер курса");
     createStudentGroupLineEdit = new QLineEdit(dialog);
@@ -115,7 +115,7 @@ void ClientWindow::openCreateStudentWindow() {
 
 void ClientWindow::createStudentRequest() {
     QString name = createStudentNameLineEdit->text();
-    QString dob = createStudentDOBEdit->date().toString("ГГГГ-ММ-ДД");
+    QString dob = createStudentDOBEdit->date().toString("yyyy-MM-dd");
     QString grade = createStudentGradeLineEdit->text();
     QString group = createStudentGroupLineEdit->text();
 

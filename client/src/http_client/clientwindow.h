@@ -57,6 +57,7 @@ private:
     QNetworkAccessManager *networkManager;
     QString username;
     QString passwordHash;
+    QString configFilePath;
 
     void clearInputFields();
     void displayStudents(const QJsonArray &students);
